@@ -1,7 +1,8 @@
 {
-	"name": "nuxt-app",
+	"name": "psn-web-galleries",
 	"private": true,
 	"type": "module",
+  "version": "0.0.4",
 	"scripts": {
 		"build": "nuxt build",
 		"dev": "nuxt dev --port 5533",
@@ -12,7 +13,9 @@
 		"cf-typegen": "wrangler types"
 	},
 	"dependencies": {
+		"@tailwindcss/vite": "^4.1.11",
 		"nuxt": "^4.0.0",
+		"tailwindcss": "^4.1.11",
 		"vue": "^3.5.17",
 		"vue-router": "^4.5.1"
 	},
