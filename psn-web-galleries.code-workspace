@@ -1,0 +1,18 @@
+{
+  "folders": [
+    {
+      "path": "."
+    }
+  ],
+  "settings": {
+    "search.followSymlinks": false,
+    "search.exclude": {
+      "**/node_modules": true,
+      "**/.wrangler": true,
+      "**/.nuxt": true,
+      "**/.output": true,
+      "**/data": true,
+      "**/dist": true
+    }
+  }
+}
