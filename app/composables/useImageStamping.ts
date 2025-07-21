@@ -4,6 +4,11 @@ export interface StampingProgress {
   currentFileName: string;
 }
 
+export interface StampingOptions {
+  quality?: number; // 1-100, default 75
+  format?: 'jpg' | 'webp'; // default 'jpg'
+}
+
 export class ImageStampingService {
   private wasmModule: any = null;
   private stamper: any = null;
@@ -37,11 +42,16 @@ export class ImageStampingService {
 
   async applyStampToImages(
     images: File[], 
+    options: StampingOptions = {},
     onProgress?: (progress: StampingProgress) => void
   ): Promise<{ file: File; originalName: string }[]> {
     if (!this.stamper) {
       throw new Error('WASM module not initialized');
     }
+
+    // Set default options
+    const quality = options.quality ?? 75;
+    const format = options.format ?? 'jpg';
 
     const results: { file: File; originalName: string }[] = [];
 
@@ -62,15 +72,22 @@ export class ImageStampingService {
         const arrayBuffer = await image.arrayBuffer();
         const uint8Array = new Uint8Array(arrayBuffer);
         
-        const stampedImageData = await this.stamper.apply_stamp(uint8Array);
+        // Use the new method with options
+        const stampedImageData = await this.stamper.apply_stamp_with_options(
+          uint8Array, 
+          quality, 
+          format
+        );
         
-        // Create new file with .webp extension
+        // Create new file with appropriate extension
         const originalName = image.name;
         const nameWithoutExt = originalName.replace(/\.[^/.]+$/, '');
-        const newFileName = `${nameWithoutExt}_stamped.webp`;
+        const extension = format === 'jpg' ? 'jpg' : 'webp';
+        const mimeType = format === 'jpg' ? 'image/jpeg' : 'image/webp';
+        const newFileName = `${nameWithoutExt}_stamped.${extension}`;
         
         const stampedFile = new File([stampedImageData], newFileName, {
-          type: 'image/webp'
+          type: mimeType
         });
 
         results.push({
@@ -181,8 +198,11 @@ export const useImageStamping = () => {
     service,
     initialize: () => service.initialize(),
     setStamp: (stampFile: File) => service.setStamp(stampFile),
-    applyStampToImages: (images: File[], onProgress?: (progress: StampingProgress) => void) => 
-      service.applyStampToImages(images, onProgress),
+    applyStampToImages: (
+      images: File[], 
+      options: StampingOptions = {}, 
+      onProgress?: (progress: StampingProgress) => void
+    ) => service.applyStampToImages(images, options, onProgress),
     downloadStampedImages: (stampedImages: { file: File; originalName: string }[]) => 
       service.downloadStampedImages(stampedImages),
     saveStampedImagesToDirectory: (stampedImages: { file: File; originalName: string }[]) => 

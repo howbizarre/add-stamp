@@ -55,11 +55,16 @@ impl ImageStamper {
 
     #[wasm_bindgen]
     pub fn apply_stamp(&self, image_bytes: &[u8]) -> Result<Vec<u8>, JsValue> {
-        self.apply_stamp_with_quality(image_bytes, 75.0)
+        self.apply_stamp_with_options(image_bytes, 75.0, "jpg")
     }
 
     #[wasm_bindgen]
     pub fn apply_stamp_with_quality(&self, image_bytes: &[u8], quality: f32) -> Result<Vec<u8>, JsValue> {
+        self.apply_stamp_with_options(image_bytes, quality, "jpg")
+    }
+
+    #[wasm_bindgen]
+    pub fn apply_stamp_with_options(&self, image_bytes: &[u8], quality: f32, format: &str) -> Result<Vec<u8>, JsValue> {
         if self.stamp_data.is_empty() {
             return Err(JsValue::from_str("Stamp not set"));
         }
@@ -119,29 +124,48 @@ impl ImageStamper {
         // Apply stamp with 50% opacity
         self.blend_images(&mut rgba_img, &resized_stamp, x_offset, y_offset, 0.5);
 
-        // Convert to optimized WebP with specified quality
-        let webp_data = self.encode_webp_optimized(&rgba_img, quality)?;
+        // Convert to the specified format with quality
+        let output_data = self.encode_image_with_format(&rgba_img, quality, format)?;
 
-        console_log!("Generated optimized WebP image, size: {} bytes (quality: {}%)", webp_data.len(), quality);
-        Ok(webp_data)
+        console_log!("Generated {} image, size: {} bytes (quality: {}%)", format, output_data.len(), quality);
+        Ok(output_data)
     }
 
-    fn encode_webp_optimized(&self, img: &ImageBuffer<Rgba<u8>, Vec<u8>>, _quality: f32) -> Result<Vec<u8>, JsValue> {
-        use image::{DynamicImage, ImageFormat};
+    fn encode_image_with_format(&self, img: &ImageBuffer<Rgba<u8>, Vec<u8>>, quality: f32, format: &str) -> Result<Vec<u8>, JsValue> {
+        use image::{DynamicImage, ImageFormat, codecs::jpeg::JpegEncoder, ImageEncoder};
         use std::io::Cursor;
         
         // Convert to DynamicImage
         let dynamic_img = DynamicImage::ImageRgba8(img.clone());
         
-        // Create a buffer to write the WebP data
+        // Create a buffer to write the image data
         let mut buffer = Vec::new();
-        let mut cursor = Cursor::new(&mut buffer);
         
-        // Encode as WebP
-        dynamic_img.write_to(&mut cursor, ImageFormat::WebP)
-            .map_err(|e| JsValue::from_str(&format!("Failed to encode WebP: {}", e)))?;
+        match format.to_lowercase().as_str() {
+            "jpg" | "jpeg" => {
+                // Convert RGBA to RGB for JPEG (JPEG doesn't support transparency)
+                let rgb_img = dynamic_img.to_rgb8();
+                
+                // Use JPEG encoder with quality control
+                let mut cursor = Cursor::new(&mut buffer);
+                let encoder = JpegEncoder::new_with_quality(&mut cursor, quality as u8);
+                
+                let (width, height) = rgb_img.dimensions();
+                encoder.write_image(rgb_img.as_raw(), width, height, image::ColorType::Rgb8)
+                    .map_err(|e| JsValue::from_str(&format!("Failed to encode JPEG: {}", e)))?;
+            },
+            "webp" => {
+                // Encode as WebP
+                let mut cursor = Cursor::new(&mut buffer);
+                dynamic_img.write_to(&mut cursor, ImageFormat::WebP)
+                    .map_err(|e| JsValue::from_str(&format!("Failed to encode WebP: {}", e)))?;
+            },
+            _ => {
+                return Err(JsValue::from_str(&format!("Unsupported format: {}. Use 'jpg' or 'webp'", format)));
+            }
+        }
         
-        console_log!("Generated WebP image, size: {} bytes", buffer.len());
+        console_log!("Generated {} image, size: {} bytes (quality: {}%)", format, buffer.len(), quality);
         Ok(buffer)
     }
 

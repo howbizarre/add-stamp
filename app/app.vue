@@ -58,23 +58,27 @@ const displayImages = computed(() => {
 });
 
 const addStampToImages = async () => {
-  if (!selectedPngImage.value || selectedImages.value.length === 0) {
+  if (!canAddStamp.value) {
     return;
   }
 
-  try {
-    isStamping.value = true;
-    stampingProgress.value = { current: 0, total: selectedImages.value.length, currentFileName: '' };
+  isStamping.value = true;
+  stampingProgress.value = { current: 0, total: selectedImages.value.length, currentFileName: '' };
 
-    // Initialize WASM module
+  try {
+    // Initialize the WASM module
     await initialize();
 
     // Set the stamp
+    if (!selectedPngImage.value) {
+      throw new Error('No stamp image selected');
+    }
     await setStamp(selectedPngImage.value);
 
-    // Apply stamp to all images
+    // Apply stamp to all images with JPG format and 75% quality
     const results = await applyStampToImages(
       selectedImages.value,
+      { format: 'jpg', quality: 75 }, // JPG format as default with 75% quality
       (progress: StampingProgress) => {
         stampingProgress.value = progress;
       }
@@ -104,7 +108,7 @@ const saveStampedImages = async () => {
     // Convert File objects back to the format expected by save function
     const results = stampedImages.value.map(file => ({
       file,
-      originalName: file.name.replace('_stamped.webp', '')
+      originalName: file.name.replace(/_stamped\.(jpg|webp)$/, '')
     }));
 
     // If we don't have a directory handle, ask for one
