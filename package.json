@@ -4,13 +4,16 @@
 	"type": "module",
   "version": "0.0.4",
 	"scripts": {
-		"build": "nuxt build",
+		"build": "npm run build:wasm && nuxt build",
+		"build:wasm": "cd wasm && wasm-pack build --target web --out-dir pkg --out-name image_stamper && cd .. && if not exist public\\wasm mkdir public\\wasm && xcopy /Y /E wasm\\pkg\\* public\\wasm\\",
 		"dev": "nuxt dev --port 5533",
+		"dev:wasm": "npm run build:wasm && npm run dev",
 		"generate": "nuxt generate",
 		"preview": "npm run build && wrangler dev",
 		"postinstall": "nuxt prepare",
 		"deploy": "npm run build && wrangler deploy",
-		"cf-typegen": "wrangler types"
+		"cf-typegen": "wrangler types",
+		"clean:wasm": "if exist wasm\\pkg rmdir /s /q wasm\\pkg && if exist public\\wasm\\*.js del /q public\\wasm\\*.js && if exist public\\wasm\\*.wasm del /q public\\wasm\\*.wasm && if exist public\\wasm\\*.d.ts del /q public\\wasm\\*.d.ts"
 	},
 	"dependencies": {
 		"@tailwindcss/vite": "^4.1.11",
