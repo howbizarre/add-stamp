@@ -8,6 +8,7 @@ const stampedImages = ref<File[]>([]);
 const isStamping = ref(false);
 const stampingProgress = ref<StampingProgress>({ current: 0, total: 0, currentFileName: '' });
 const isStampingComplete = ref(false);
+const isSaving = ref(false);
 const isSaved = ref(false);
 const selectedDirectoryHandle = ref<any>(null);
 
@@ -86,7 +87,7 @@ const addStampToImages = async () => {
 
     // Update the gallery with stamped images
     stampedImages.value = results.map((result: { file: File; originalName: string }) => result.file);
-    
+
     // Mark stamping as complete
     isStampingComplete.value = true;
 
@@ -105,6 +106,7 @@ const saveStampedImages = async () => {
   }
 
   try {
+    isSaving.value = true;
     // Convert File objects back to the format expected by save function
     const results = stampedImages.value.map(file => ({
       file,
@@ -136,6 +138,7 @@ const saveStampedImages = async () => {
     // Use the directory handle to save directly
     await saveStampedImagesToSpecificDirectory(results, selectedDirectoryHandle.value);
     isSaved.value = true;
+    isSaving.value = false;
   } catch (error) {
     console.error('Error saving stamped images:', error);
     alert(`Error saving images: ${error}`);
@@ -181,7 +184,7 @@ const saveStampedImages = async () => {
         <div class="flex justify-between items-center mb-4">
           <div class="flex-1">
             <h2 v-if="!canAddStamp && !isStamping && !showStampedLabel" class="text-2xl font-semibold text-gray-700">Gallery</h2>
-            
+
             <button v-if="canAddStamp && !isStamping"
                     @click="addStampToImages"
                     class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
@@ -195,7 +198,7 @@ const saveStampedImages = async () => {
                 <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
                 <span class="text-lg font-medium text-gray-700">Processing Images...</span>
               </div>
-              
+
               <div class="flex-1 max-w-md">
                 <div class="bg-gray-200 rounded-full h-2">
                   <div class="bg-blue-600 h-2 rounded-full transition-all duration-300"
@@ -212,16 +215,22 @@ const saveStampedImages = async () => {
           <div v-if="showSaveButton || isSaved" class="ml-4 flex items-center space-x-3">
             <button v-if="showSaveButton"
                     @click="saveStampedImages"
+                    :disabled="isSaving"
+                    :class="{ 'cursor-not-allowed': isSaving }"
                     class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
               Save to Directory
             </button>
-            
+
+            <div v-if="isSaving" class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600">
+              <span class="sr-only">Saving Images...</span>
+            </div>
+
             <span v-if="isSaved" class="px-3 py-1 bg-green-100 text-green-800 text-sm font-medium rounded-full">
               ✓ Stamped Images
             </span>
           </div>
         </div>
-        
+
         <ImageGallery :images="displayImages" />
       </section>
     </main>
