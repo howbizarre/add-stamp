@@ -37,9 +37,7 @@
 </template>
 
 <script lang='ts' setup>
-interface Props {
-  selectedImages?: File[]
-}
+interface Props { selectedImages?: File[]; }
 
 const props = withDefaults(defineProps<Props>(), {
   selectedImages: () => []
