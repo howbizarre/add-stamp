@@ -187,7 +187,7 @@ const saveStampedImages = async () => {
 
             <button v-if="canAddStamp && !isStamping"
                     @click="addStampToImages"
-                    class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                    class="bg-lime-500 hover:bg-lime-600 text-white focus:ring-lime-500">
               Apply Stamp
             </button>
 
@@ -195,7 +195,7 @@ const saveStampedImages = async () => {
 
             <div v-if="isStamping" class="flex items-center space-x-4">
               <div class="flex items-center space-x-2">
-                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-black"></div>
                 <span class="text-lg font-medium text-gray-700">Processing Images...</span>
               </div>
 
@@ -217,11 +217,11 @@ const saveStampedImages = async () => {
                     @click="saveStampedImages"
                     :disabled="isSaving"
                     :class="{ 'cursor-not-allowed': isSaving }"
-                    class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
+                    class="bg-green-500 hover:bg-green-600 text-white focus:ring-green-500">
               Save to Directory
             </button>
 
-            <div v-if="isSaving" class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600">
+            <div v-if="isSaving" class="animate-spin rounded-full h-6 w-6 border-b-2 border-black">
               <span class="sr-only">Saving Images...</span>
             </div>
 

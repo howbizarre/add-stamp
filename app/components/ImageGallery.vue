@@ -5,6 +5,7 @@ interface Image {
     width: number;
     height: number;
     orientation: 'portrait' | 'landscape' | 'square';
+    filename: string;
   };
 }
 
@@ -34,7 +35,8 @@ const getImageMetadata = (file: File): Promise<Image> => {
         meta: {
           width,
           height,
-          orientation
+          orientation,
+          filename: file.name
         }
       });
     };
@@ -62,11 +64,12 @@ onUnmounted(() => {
   <div v-if="images.length" class="columns-2 md:columns-3 lg:col-span-4 xl:columns-5 gap-2">
     <div v-for="image in images" :key="image.url" class="relative group mb-4">
       <img :src="image.url"
-           :alt="`${image.meta.orientation} image ${image.meta.width}x${image.meta.height}`"
+           :alt="`${image.meta.filename} - ${image.meta.orientation} image ${image.meta.width}x${image.meta.height}`"
            class="w-full rounded-lg shadow-lg border border-white m-0!" />
 
       <div class="absolute bottom-0 left-0 right-0 rounded-bl-lg rounded-br-lg bg-black bg-opacity-50 text-white text-xs p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-        {{ image.meta.width }}x{{ image.meta.height }} ({{ image.meta.orientation }})
+        <div class="font-medium truncate">{{ image.meta.filename }}</div>
+        <div>{{ image.meta.width }}x{{ image.meta.height }} ({{ image.meta.orientation }})</div>
       </div>
     </div>
   </div>

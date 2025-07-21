@@ -3,29 +3,29 @@
     <div class="flex justify-between items-center mb-2">
       <template v-if="!selectedImage">
         <label for="png-upload" class="block text-sm font-medium text-gray-700">
-            Select a PNG image
+          Select a PNG image
         </label>
       </template>
 
       <template v-if="selectedImage">
-        <div class="flex gap-2">
+        <div class="flex gap-2 items-center">
           <span class="text-sm text-gray-600">{{ selectedImage.name }}</span>
           <button @click="resetImage"
-                  class="px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-xs font-medium rounded transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
-            Remove
+                  class="bg-red-500 hover:bg-red-600 text-white focus:ring-red-500">
+            Remove Stamp
           </button>
         </div>
       </template>
     </div>
 
     <!-- Upload Area or Image Preview -->
-    <div @drop="handleDrop" 
-         @dragover="handleDragOver" 
-         @dragenter="handleDragEnter" 
-         @dragleave="handleDragLeave" 
-         :class="{ 'border-indigo-500 bg-indigo-50': isDragOver }" 
+    <div @drop="handleDrop"
+         @dragover="handleDragOver"
+         @dragenter="handleDragEnter"
+         @dragleave="handleDragLeave"
+         :class="{ 'border-indigo-500 bg-indigo-50': isDragOver }"
          class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md transition-colors cursor-pointer hover:border-indigo-400">
-      
+
       <!-- Upload content (shows only when no image is selected) -->
       <div v-if="!selectedImage" class="space-y-1 text-center">
         <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
@@ -35,11 +35,11 @@
         <div class="flex text-sm text-gray-600">
           <label for="png-upload" class="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
             <span>Add Stamp file</span>
-            <input id="png-upload" 
-                   name="png-upload" 
-                   type="file" 
-                   class="sr-only" 
-                   @change="handleFileChange" 
+            <input id="png-upload"
+                   name="png-upload"
+                   type="file"
+                   class="sr-only"
+                   @change="handleFileChange"
                    accept=".png">
           </label>
 
@@ -54,7 +54,7 @@
         <img :src="imagePreviewUrl"
              :alt="selectedImage.name"
              class="max-h-20 max-w-full object-contain rounded shadow-md" />
-        
+
         <div class="absolute bottom-1 left-1 right-1 bg-black bg-opacity-75 text-white text-xs p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded">
           <div class="flex justify-between items-center">
             <span class="truncate">{{ selectedImage.name }}</span>
