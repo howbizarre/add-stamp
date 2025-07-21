@@ -13,7 +13,7 @@ const handleImagesSelected = (images: File[]) => {
       <p class="text-lg text-gray-600">Качете и разгледайте вашите снимки</p>
     </header>
 
-    <main class="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-md">
+    <main class="mx-auto bg-white p-6 rounded-lg">
       <div class="mb-8">
         <ImageUploader @images-selected="handleImagesSelected" />
       </div>
