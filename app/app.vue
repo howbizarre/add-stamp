@@ -1,5 +1,6 @@
 <script lang='ts' setup>
 const selectedImages = ref<File[]>([]);
+const selectedPngImage = ref<File | null>(null);
 
 const handleImagesSelected = (images: File[]) => {
   selectedImages.value = images
@@ -7,6 +8,14 @@ const handleImagesSelected = (images: File[]) => {
 
 const handleImagesReset = () => {
   selectedImages.value = [];
+};
+
+const handlePngImageSelected = (image: File) => {
+  selectedPngImage.value = image;
+};
+
+const handlePngImageReset = () => {
+  selectedPngImage.value = null;
 };
 </script>
 
@@ -17,14 +26,31 @@ const handleImagesReset = () => {
       <p class="text-lg text-gray-600">Upload and browse your photos</p>
     </header>
 
-    <main class="mx-auto bg-white p-6 rounded-lg">
-      <div class="mb-8">
-        <ImageUploader :selected-images="selectedImages"
-                       @images-selected="handleImagesSelected"
-                       @images-reset="handleImagesReset" />
-      </div>
+    <main class="mx-auto bg-white p-6 rounded-lg space-y-8">
+      <!-- Multiple Images Uploader -->
+      <section>
+        <h2 class="text-2xl font-semibold text-gray-700 mb-4">Multiple Images Gallery</h2>
+        <div class="mb-8">
+          <ImageUploader :selected-images="selectedImages"
+                         @images-selected="handleImagesSelected"
+                         @images-reset="handleImagesReset" />
+        </div>
 
-      <ImageGallery :images="selectedImages" />
+        <ImageGallery :images="selectedImages" />
+      </section>
+
+      <!-- Divider -->
+      <hr class="border-gray-200">
+
+      <!-- Single PNG Picker -->
+      <section>
+        <h2 class="text-2xl font-semibold text-gray-700 mb-4">Single PNG Image Picker</h2>
+        <div class="max-w-2xl mx-auto">
+          <SinglePngPicker :selected-image="selectedPngImage"
+                           @image-selected="handlePngImageSelected"
+                           @image-reset="handlePngImageReset" />
+        </div>
+      </section>
     </main>
   </div>
 </template>
