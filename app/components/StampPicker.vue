@@ -3,7 +3,7 @@
     <div class="flex justify-between items-center mb-2">
       <template v-if="!selectedImage">
         <label for="png-upload" class="block text-sm font-medium text-gray-700">
-          Изберете PNG снимка
+            Select a PNG image
         </label>
       </template>
 
@@ -12,22 +12,22 @@
           <span class="text-sm text-gray-600">{{ selectedImage.name }}</span>
           <button @click="resetImage"
                   class="px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-xs font-medium rounded transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
-            Премахни
+            Remove
           </button>
         </div>
       </template>
     </div>
 
-    <!-- Upload Area (показва се само ако няма избрана снимка) -->
-    <div v-if="!selectedImage"
-         @drop="handleDrop" 
+    <!-- Upload Area или Image Preview -->
+    <div @drop="handleDrop" 
          @dragover="handleDragOver" 
          @dragenter="handleDragEnter" 
          @dragleave="handleDragLeave" 
          :class="{ 'border-indigo-500 bg-indigo-50': isDragOver }" 
          class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md transition-colors cursor-pointer hover:border-indigo-400">
       
-      <div class="space-y-1 text-center">
+      <!-- Upload content (показва се само ако няма избрана снимка) -->
+      <div v-if="!selectedImage" class="space-y-1 text-center">
         <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
           <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
@@ -48,19 +48,17 @@
 
         <p class="text-xs text-gray-500">Само PNG файлове до 10MB</p>
       </div>
-    </div>
 
-    <!-- Image Preview (показва се само ако има избрана снимка) -->
-    <div v-if="selectedImage && imagePreviewUrl" class="mt-4">
-      <div class="relative group h-48 flex items-center justify-center bg-gray-50 rounded-lg overflow-hidden">
+      <!-- Image Preview (показва се само ако има избрана снимка) -->
+      <div v-if="selectedImage && imagePreviewUrl" class="relative group flex items-center justify-center w-full h-full p-2">
         <img :src="imagePreviewUrl"
              :alt="selectedImage.name"
-             class="max-h-full max-w-full object-contain rounded-lg shadow-lg" />
+             class="max-h-20 max-w-full object-contain rounded shadow-md" />
         
-        <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-75 text-white text-sm p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        <div class="absolute bottom-1 left-1 right-1 bg-black bg-opacity-75 text-white text-xs p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded">
           <div class="flex justify-between items-center">
             <span class="truncate">{{ selectedImage.name }}</span>
-            <span class="text-xs ml-2">{{ formatFileSize(selectedImage.size) }}</span>
+            <span class="ml-2">{{ formatFileSize(selectedImage.size) }}</span>
           </div>
           <div v-if="imageMetadata" class="text-xs mt-1 text-gray-300">
             {{ imageMetadata.width }}x{{ imageMetadata.height }} px
