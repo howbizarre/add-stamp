@@ -1,9 +1,24 @@
-<template>
-  <div>
-    <NuxtRouteAnnouncer />
+<script lang='ts' setup>
+const selectedImages = ref<File[]>([]);
 
-    <h1 class="text-3xl font-bold">
-      Hello world!
-    </h1>
+const handleImagesSelected = (images: File[]) => {
+  selectedImages.value = images
+};
+</script>
+
+<template>
+  <div class="container mx-auto p-4 sm:p-6 lg:p-8">
+    <header class="text-center mb-8">
+      <h1 class="text-4xl font-bold text-gray-800">Моята Фотогалерия</h1>
+      <p class="text-lg text-gray-600">Качете и разгледайте вашите снимки</p>
+    </header>
+
+    <main class="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-md">
+      <div class="mb-8">
+        <ImageUploader @images-selected="handleImagesSelected" />
+      </div>
+      
+      <ImageGallery :images="selectedImages" />
+    </main>
   </div>
 </template>
