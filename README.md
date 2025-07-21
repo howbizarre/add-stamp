@@ -231,6 +231,34 @@ Locally preview production build:
 npm run preview
 ```
 
+## Deployment
+
+### Cloudflare Pages/Workers
+
+This project is configured for deployment on Cloudflare using Wrangler. The WASM files will be automatically included in the build.
+
+```bash
+# Build and deploy to Cloudflare
+npm run deploy
+
+# Or manually:
+npm run build
+npx wrangler --cwd .output/ deploy
+```
+
+**Important Notes for Cloudflare Deployment:**
+
+1. **WASM Files**: The WASM module files are automatically copied to `.output/public/wasm/` during the build process
+2. **Headers**: Proper content-type headers are configured for WASM files in `nuxt.config.ts`
+3. **Browser Requirements**: Modern browsers are required for WASM support
+4. **File System Access API**: Will fallback to downloads on Cloudflare (no server-side file writing)
+
+### Verifying Deployment
+
+After deployment, verify that WASM files are accessible:
+- `https://your-domain.com/wasm/image_stamper.js`
+- `https://your-domain.com/wasm/image_stamper_bg.wasm`
+
 ## Troubleshooting
 
 ### WASM Build Issues

@@ -16,6 +16,20 @@ export default defineNuxtConfig({
     cloudflare: {
       deployConfig: true,
       nodeCompat: true
+    },
+
+    // Add proper headers for WASM files
+    routeRules: {
+      '/wasm/*.wasm': { 
+        headers: { 
+          'Content-Type': 'application/wasm'
+        } 
+      },
+      '/wasm/*.js': { 
+        headers: { 
+          'Content-Type': 'application/javascript'
+        } 
+      }
     }
   },
 
