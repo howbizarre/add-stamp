@@ -18,7 +18,7 @@
       </template>
     </div>
 
-    <!-- Upload Area или Image Preview -->
+    <!-- Upload Area or Image Preview -->
     <div @drop="handleDrop" 
          @dragover="handleDragOver" 
          @dragenter="handleDragEnter" 
@@ -26,7 +26,7 @@
          :class="{ 'border-indigo-500 bg-indigo-50': isDragOver }" 
          class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md transition-colors cursor-pointer hover:border-indigo-400">
       
-      <!-- Upload content (показва се само ако няма избрана снимка) -->
+      <!-- Upload content (shows only when no image is selected) -->
       <div v-if="!selectedImage" class="space-y-1 text-center">
         <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
           <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
@@ -34,7 +34,7 @@
 
         <div class="flex text-sm text-gray-600">
           <label for="png-upload" class="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
-            <span>Качете PNG файл</span>
+            <span>Upload PNG file</span>
             <input id="png-upload" 
                    name="png-upload" 
                    type="file" 
@@ -43,13 +43,13 @@
                    accept=".png">
           </label>
 
-          <p class="pl-1">или го завлачете тук</p>
+          <p class="pl-1">or drag and drop it here</p>
         </div>
 
-        <p class="text-xs text-gray-500">Само PNG файлове до 10MB</p>
+        <p class="text-xs text-gray-500">PNG files only, up to 10MB</p>
       </div>
 
-      <!-- Image Preview (показва се само ако има избрана снимка) -->
+      <!-- Image Preview (shows only when an image is selected) -->
       <div v-if="selectedImage && imagePreviewUrl" class="relative group flex items-center justify-center w-full h-full p-2">
         <img :src="imagePreviewUrl"
              :alt="selectedImage.name"
@@ -95,11 +95,11 @@ const imagePreviewUrl = ref<string | null>(null);
 const imageMetadata = ref<ImageMetadata | null>(null);
 const errorMessage = ref<string>('');
 
-// Следи за промени в избраната снимка
+// Watch for changes in the selected image
 watch(
   () => props.selectedImage,
   async (newImage) => {
-    // Изчистваме предишния URL
+    // Clear the previous URL
     if (imagePreviewUrl.value) {
       URL.revokeObjectURL(imagePreviewUrl.value);
       imagePreviewUrl.value = null;
@@ -109,10 +109,10 @@ watch(
     errorMessage.value = '';
 
     if (newImage) {
-      // Създаваме нов preview URL
+      // Create new preview URL
       imagePreviewUrl.value = URL.createObjectURL(newImage);
       
-      // Получаваме метаданните на снимката
+      // Get image metadata
       try {
         imageMetadata.value = await getImageMetadata(newImage);
       } catch (error) {
@@ -123,7 +123,7 @@ watch(
   { immediate: true }
 );
 
-// Почистване при unmount
+// Cleanup on unmount
 onUnmounted(() => {
   if (imagePreviewUrl.value) {
     URL.revokeObjectURL(imagePreviewUrl.value);
@@ -136,22 +136,22 @@ const resetImage = () => {
 };
 
 const validatePngFile = (file: File): boolean => {
-  // Проверка на разширението
+  // Check file extension
   if (!file.name.toLowerCase().endsWith('.png')) {
-    errorMessage.value = 'Моля, изберете PNG файл.';
+    errorMessage.value = 'Please select a PNG file.';
     return false;
   }
 
-  // Проверка на MIME типа
+  // Check MIME type
   if (file.type !== 'image/png') {
-    errorMessage.value = 'Файлът не е валиден PNG формат.';
+    errorMessage.value = 'The file is not a valid PNG format.';
     return false;
   }
 
-  // Проверка на размера (10MB)
+  // Check file size (10MB)
   const maxSize = 10 * 1024 * 1024; // 10MB
   if (file.size > maxSize) {
-    errorMessage.value = 'Файлът е твърде голям. Максималният размер е 10MB.';
+    errorMessage.value = 'File is too large. Maximum size is 10MB.';
     return false;
   }
 
@@ -170,7 +170,7 @@ const handleFileChange = (event: Event) => {
     }
   }
   
-  // Изчистваме input-а за да можем да изберем същия файл отново
+  // Clear the input to allow selecting the same file again
   target.value = '';
 };
 
