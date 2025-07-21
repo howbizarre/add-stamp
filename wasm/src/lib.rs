@@ -1,12 +1,5 @@
 use wasm_bindgen::prelude::*;
-use image::{ImageBuffer, DynamicImage, Rgba, imageops};
-use std::io::Cursor;
-
-// When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
-// allocator.
-#[cfg(feature = "wee_alloc")]
-#[global_allocator]
-static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
+use image::{ImageBuffer, Rgba, imageops};
 
 #[wasm_bindgen]
 extern "C" {
@@ -62,6 +55,11 @@ impl ImageStamper {
 
     #[wasm_bindgen]
     pub fn apply_stamp(&self, image_bytes: &[u8]) -> Result<Vec<u8>, JsValue> {
+        self.apply_stamp_with_quality(image_bytes, 75.0)
+    }
+
+    #[wasm_bindgen]
+    pub fn apply_stamp_with_quality(&self, image_bytes: &[u8], quality: f32) -> Result<Vec<u8>, JsValue> {
         if self.stamp_data.is_empty() {
             return Err(JsValue::from_str("Stamp not set"));
         }
@@ -121,14 +119,30 @@ impl ImageStamper {
         // Apply stamp with 50% opacity
         self.blend_images(&mut rgba_img, &resized_stamp, x_offset, y_offset, 0.5);
 
-        // Convert to WebP
-        let dynamic_img = DynamicImage::ImageRgba8(rgba_img);
-        let mut webp_data = Vec::new();
-        dynamic_img.write_to(&mut Cursor::new(&mut webp_data), image::ImageOutputFormat::WebP)
-            .map_err(|e| JsValue::from_str(&format!("Failed to encode as WebP: {}", e)))?;
+        // Convert to optimized WebP with specified quality
+        let webp_data = self.encode_webp_optimized(&rgba_img, quality)?;
 
-        console_log!("Generated WebP image, size: {} bytes", webp_data.len());
+        console_log!("Generated optimized WebP image, size: {} bytes (quality: {}%)", webp_data.len(), quality);
         Ok(webp_data)
+    }
+
+    fn encode_webp_optimized(&self, img: &ImageBuffer<Rgba<u8>, Vec<u8>>, _quality: f32) -> Result<Vec<u8>, JsValue> {
+        use image::{DynamicImage, ImageFormat};
+        use std::io::Cursor;
+        
+        // Convert to DynamicImage
+        let dynamic_img = DynamicImage::ImageRgba8(img.clone());
+        
+        // Create a buffer to write the WebP data
+        let mut buffer = Vec::new();
+        let mut cursor = Cursor::new(&mut buffer);
+        
+        // Encode as WebP
+        dynamic_img.write_to(&mut cursor, ImageFormat::WebP)
+            .map_err(|e| JsValue::from_str(&format!("Failed to encode WebP: {}", e)))?;
+        
+        console_log!("Generated WebP image, size: {} bytes", buffer.len());
+        Ok(buffer)
     }
 
     fn blend_images(
