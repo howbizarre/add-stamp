@@ -4,6 +4,10 @@ const selectedImages = ref<File[]>([]);
 const handleImagesSelected = (images: File[]) => {
   selectedImages.value = images
 };
+
+const handleImagesReset = () => {
+  selectedImages.value = [];
+};
 </script>
 
 <template>
@@ -15,7 +19,11 @@ const handleImagesSelected = (images: File[]) => {
 
     <main class="mx-auto bg-white p-6 rounded-lg">
       <div class="mb-8">
-        <ImageUploader @images-selected="handleImagesSelected" />
+        <ImageUploader 
+          :selected-images="selectedImages"
+          @images-selected="handleImagesSelected" 
+          @images-reset="handleImagesReset"
+        />
       </div>
       
       <ImageGallery :images="selectedImages" />

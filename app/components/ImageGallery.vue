@@ -58,7 +58,6 @@ onUnmounted(() => {
 });
 </script>
 
-
 <template>
   <div v-if="images.length" class="columns-2 md:columns-3 lg:col-span-4 xl:columns-5 gap-2">
     <div v-for="image in images" :key="image.url" class="relative group mb-4">
