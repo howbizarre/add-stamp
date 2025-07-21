@@ -27,29 +27,35 @@ const handlePngImageReset = () => {
     </header>
 
     <main class="mx-auto bg-white p-6 rounded-lg space-y-8">
-      <!-- Multiple Images Uploader -->
+      <!-- Upload Section -->
       <section>
-        <h2 class="text-2xl font-semibold text-gray-700 mb-4">Multiple Images Gallery</h2>
-        <div class="mb-8">
-          <ImageUploader :selected-images="selectedImages"
-                         @images-selected="handleImagesSelected"
-                         @images-reset="handleImagesReset" />
-        </div>
+        <h2 class="text-2xl font-semibold text-gray-700 mb-4">Upload Files</h2>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Multiple Images Uploader -->
+          <div>
+            <h3 class="text-lg font-medium text-gray-600 mb-3">Multiple Images Gallery</h3>
+            <ImageUploader :selected-images="selectedImages"
+                           @images-selected="handleImagesSelected"
+                           @images-reset="handleImagesReset" />
+          </div>
 
-        <ImageGallery :images="selectedImages" />
+          <!-- Stamp Picker -->
+          <div>
+            <h3 class="text-lg font-medium text-gray-600 mb-3">Stamp Picker (PNG only)</h3>
+            <StampPicker :selected-image="selectedPngImage"
+                         @image-selected="handlePngImageSelected"
+                         @image-reset="handlePngImageReset" />
+          </div>
+        </div>
       </section>
 
       <!-- Divider -->
       <hr class="border-gray-200">
 
-      <!-- Single PNG Picker -->
+      <!-- Gallery Section -->
       <section>
-        <h2 class="text-2xl font-semibold text-gray-700 mb-4">Single PNG Image Picker</h2>
-        <div class="max-w-2xl mx-auto">
-          <SinglePngPicker :selected-image="selectedPngImage"
-                           @image-selected="handlePngImageSelected"
-                           @image-reset="handlePngImageReset" />
-        </div>
+        <h2 class="text-2xl font-semibold text-gray-700 mb-4">Gallery</h2>
+        <ImageGallery :images="selectedImages" />
       </section>
     </main>
   </div>

@@ -52,15 +52,15 @@
 
     <!-- Image Preview (показва се само ако има избрана снимка) -->
     <div v-if="selectedImage && imagePreviewUrl" class="mt-4">
-      <div class="relative group">
+      <div class="relative group h-48 flex items-center justify-center bg-gray-50 rounded-lg overflow-hidden">
         <img :src="imagePreviewUrl"
              :alt="selectedImage.name"
-             class="w-full max-w-md mx-auto rounded-lg shadow-lg border border-gray-200" />
+             class="max-h-full max-w-full object-contain rounded-lg shadow-lg" />
         
-        <div class="absolute bottom-0 left-0 right-0 rounded-bl-lg rounded-br-lg bg-black bg-opacity-75 text-white text-sm p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-75 text-white text-sm p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
           <div class="flex justify-between items-center">
-            <span>{{ selectedImage.name }}</span>
-            <span class="text-xs">{{ formatFileSize(selectedImage.size) }}</span>
+            <span class="truncate">{{ selectedImage.name }}</span>
+            <span class="text-xs ml-2">{{ formatFileSize(selectedImage.size) }}</span>
           </div>
           <div v-if="imageMetadata" class="text-xs mt-1 text-gray-300">
             {{ imageMetadata.width }}x{{ imageMetadata.height }} px
