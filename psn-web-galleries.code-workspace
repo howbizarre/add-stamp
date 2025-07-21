@@ -13,6 +13,10 @@
       "**/.output": true,
       "**/data": true,
       "**/dist": true
-    }
+    },
+    "typescript.suggest.autoImports": true,
+    "javascript.format.semicolons": "insert",
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true
   }
 }

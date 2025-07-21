@@ -1,6 +1,6 @@
 <template>
   <div class="mx-auto">
-    <label for="file-upload" class="block text-sm font-medium text-gray-700">Избери снимки</label>
+    <label for="file-upload" class="block text-sm font-medium text-gray-700">Select images</label>
 
     <div @drop="handleDrop"
          @dragover="handleDragOver"
@@ -15,14 +15,14 @@
 
         <div class="flex text-sm text-gray-600">
           <label for="file-upload" class="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
-            <span>Качи файлове</span>
+            <span>Upload files</span>
             <input id="file-upload" name="file-upload" type="file" class="sr-only" multiple @change="handleFileChange" accept="image/*">
           </label>
 
-          <p class="pl-1">или ги плъзни и пусни</p>
+          <p class="pl-1">or drag and drop them</p>
         </div>
 
-        <p class="text-xs text-gray-500">PNG, JPG, GIF до 10MB</p>
+        <p class="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
       </div>
     </div>
   </div>
