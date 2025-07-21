@@ -7,29 +7,50 @@ const selectedPngImage = ref<File | null>(null);
 const stampedImages = ref<File[]>([]);
 const isStamping = ref(false);
 const stampingProgress = ref<StampingProgress>({ current: 0, total: 0, currentFileName: '' });
+const isStampingComplete = ref(false);
+const isSaved = ref(false);
+const selectedDirectoryHandle = ref<any>(null);
 
-const { initialize, setStamp, applyStampToImages } = useImageStamping();
+const { initialize, setStamp, applyStampToImages, saveStampedImagesToSpecificDirectory, downloadStampedImages } = useImageStamping();
 
 const handleImagesSelected = (images: File[]) => {
   selectedImages.value = images
   stampedImages.value = []; // Reset stamped images when new images are selected
+  isStampingComplete.value = false;
+  isSaved.value = false;
+  selectedDirectoryHandle.value = null;
 };
 
 const handleImagesReset = () => {
   selectedImages.value = [];
   stampedImages.value = [];
+  isStampingComplete.value = false;
+  isSaved.value = false;
+  selectedDirectoryHandle.value = null;
 };
 
 const handlePngImageSelected = (image: File) => {
   selectedPngImage.value = image;
+  isStampingComplete.value = false;
+  isSaved.value = false;
 };
 
 const handlePngImageReset = () => {
   selectedPngImage.value = null;
+  isStampingComplete.value = false;
+  isSaved.value = false;
 };
 
 const canAddStamp = computed(() => {
-  return selectedImages.value.length > 0 && selectedPngImage.value !== null && !isStamping.value;
+  return selectedImages.value.length > 0 && selectedPngImage.value !== null && !isStamping.value && !isStampingComplete.value;
+});
+
+const showStampedLabel = computed(() => {
+  return isStampingComplete.value && !isStamping.value;
+});
+
+const showSaveButton = computed(() => {
+  return isStampingComplete.value && !isSaved.value;
 });
 
 const displayImages = computed(() => {
@@ -61,9 +82,9 @@ const addStampToImages = async () => {
 
     // Update the gallery with stamped images
     stampedImages.value = results.map((result: { file: File; originalName: string }) => result.file);
-
-    // Optionally download the images
-    // await downloadStampedImages(results);
+    
+    // Mark stamping as complete
+    isStampingComplete.value = true;
 
   } catch (error) {
     console.error('Error adding stamp to images:', error);
@@ -71,6 +92,49 @@ const addStampToImages = async () => {
   } finally {
     isStamping.value = false;
     stampingProgress.value = { current: 0, total: 0, currentFileName: '' };
+  }
+};
+
+const saveStampedImages = async () => {
+  if (stampedImages.value.length === 0) {
+    return;
+  }
+
+  try {
+    // Convert File objects back to the format expected by save function
+    const results = stampedImages.value.map(file => ({
+      file,
+      originalName: file.name.replace('_stamped.webp', '')
+    }));
+
+    // If we don't have a directory handle, ask for one
+    if (!selectedDirectoryHandle.value) {
+      try {
+        if ('showDirectoryPicker' in window) {
+          selectedDirectoryHandle.value = await (window as any).showDirectoryPicker({
+            mode: 'readwrite'
+          });
+        } else {
+          // Fallback to downloads if File System Access API not supported
+          await downloadStampedImages(results);
+          isSaved.value = true;
+          return;
+        }
+      } catch (error) {
+        if ((error as any).name === 'AbortError') {
+          console.log('User cancelled directory selection');
+          return;
+        }
+        throw error;
+      }
+    }
+
+    // Use the directory handle to save directly
+    await saveStampedImagesToSpecificDirectory(results, selectedDirectoryHandle.value);
+    isSaved.value = true;
+  } catch (error) {
+    console.error('Error saving stamped images:', error);
+    alert(`Error saving images: ${error}`);
   }
 };
 </script>
@@ -112,13 +176,15 @@ const addStampToImages = async () => {
       <section>
         <div class="flex justify-between items-center mb-4">
           <div class="flex-1">
-            <h2 v-if="!canAddStamp && !isStamping" class="text-2xl font-semibold text-gray-700">Gallery</h2>
+            <h2 v-if="!canAddStamp && !isStamping && !showStampedLabel" class="text-2xl font-semibold text-gray-700">Gallery</h2>
             
             <button v-if="canAddStamp && !isStamping"
                     @click="addStampToImages"
                     class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
               Add Stamp
             </button>
+
+            <h2 v-if="showStampedLabel" class="text-2xl font-semibold text-gray-700">Stamped Gallery</h2>
 
             <div v-if="isStamping" class="flex items-center space-x-4">
               <div class="flex items-center space-x-2">
@@ -139,8 +205,14 @@ const addStampToImages = async () => {
             </div>
           </div>
 
-          <div v-if="stampedImages.length > 0" class="ml-4">
-            <span class="px-3 py-1 bg-green-100 text-green-800 text-sm font-medium rounded-full">
+          <div v-if="showSaveButton || isSaved" class="ml-4 flex items-center space-x-3">
+            <button v-if="showSaveButton"
+                    @click="saveStampedImages"
+                    class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
+              Save to Directory
+            </button>
+            
+            <span v-if="isSaved" class="px-3 py-1 bg-green-100 text-green-800 text-sm font-medium rounded-full">
               ✓ Stamped Images
             </span>
           </div>

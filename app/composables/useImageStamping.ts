@@ -86,6 +86,78 @@ export class ImageStampingService {
     return results;
   }
 
+  async saveStampedImagesToDirectory(stampedImages: { file: File; originalName: string }[]): Promise<void> {
+    try {
+      // Check if File System Access API is supported
+      if (!('showDirectoryPicker' in window)) {
+        console.warn('File System Access API not supported, falling back to individual downloads');
+        await this.downloadStampedImages(stampedImages);
+        return;
+      }
+
+      // Request directory access
+      const directoryHandle = await (window as any).showDirectoryPicker({
+        mode: 'readwrite'
+      });
+
+      // Create stamped-images subdirectory
+      const stampedDirHandle = await directoryHandle.getDirectoryHandle('stamped-images', {
+        create: true
+      });
+
+      // Save each image to the subdirectory
+      for (const { file } of stampedImages) {
+        const fileHandle = await stampedDirHandle.getFileHandle(file.name, {
+          create: true
+        });
+        
+        const writable = await fileHandle.createWritable();
+        await writable.write(file);
+        await writable.close();
+      }
+
+      console.log(`Successfully saved ${stampedImages.length} images to stamped-images directory`);
+    } catch (error) {
+      if ((error as any).name === 'AbortError') {
+        console.log('User cancelled directory selection');
+        return;
+      }
+      
+      console.error('Error saving to directory:', error);
+      // Fallback to downloads
+      await this.downloadStampedImages(stampedImages);
+    }
+  }
+
+  async saveStampedImagesToSpecificDirectory(
+    stampedImages: { file: File; originalName: string }[], 
+    directoryHandle: any
+  ): Promise<void> {
+    try {
+      // Create stamped-images subdirectory
+      const stampedDirHandle = await directoryHandle.getDirectoryHandle('stamped-images', {
+        create: true
+      });
+
+      // Save each image to the subdirectory
+      for (const { file } of stampedImages) {
+        const fileHandle = await stampedDirHandle.getFileHandle(file.name, {
+          create: true
+        });
+        
+        const writable = await fileHandle.createWritable();
+        await writable.write(file);
+        await writable.close();
+      }
+
+      console.log(`Successfully saved ${stampedImages.length} images to stamped-images directory`);
+    } catch (error) {
+      console.error('Error saving to specific directory:', error);
+      // Fallback to downloads
+      await this.downloadStampedImages(stampedImages);
+    }
+  }
+
   async downloadStampedImages(stampedImages: { file: File; originalName: string }[]): Promise<void> {
     // Create a directory handle (this would need to be adapted based on your needs)
     // For now, we'll just download them individually
@@ -112,6 +184,10 @@ export const useImageStamping = () => {
     applyStampToImages: (images: File[], onProgress?: (progress: StampingProgress) => void) => 
       service.applyStampToImages(images, onProgress),
     downloadStampedImages: (stampedImages: { file: File; originalName: string }[]) => 
-      service.downloadStampedImages(stampedImages)
+      service.downloadStampedImages(stampedImages),
+    saveStampedImagesToDirectory: (stampedImages: { file: File; originalName: string }[]) => 
+      service.saveStampedImagesToDirectory(stampedImages),
+    saveStampedImagesToSpecificDirectory: (stampedImages: { file: File; originalName: string }[], directoryHandle: any) => 
+      service.saveStampedImagesToSpecificDirectory(stampedImages, directoryHandle)
   };
 };
