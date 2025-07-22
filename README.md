@@ -1,6 +1,6 @@
 # Image Watermarking App
 
-A Nuxt 3 application that allows users to apply watermarks to images using WebAssembly (WASM) for high-performance image processing.
+A Nuxt 4 application that allows users to apply watermarks to images using WebAssembly (WASM) for high-performance image processing.
 
 > **📚 WASM Development Guide**: For detailed information about the WebAssembly module, Rust implementation, and build processes, see [README-WASM.md](README-WASM.md).
 
@@ -455,7 +455,7 @@ add-stamp/
 
 ## Technology Stack
 
-- **Frontend**: Nuxt 3, Vue 3, TypeScript, Tailwind CSS
+- **Frontend**: Nuxt 4, Vue 3, TypeScript, Tailwind CSS
 - **Image Processing**: Rust, WebAssembly (WASM)
 - **Text Rendering**: rusttype crate with TrueType font support
 - **Image Libraries**: image crate, imageproc for advanced operations
