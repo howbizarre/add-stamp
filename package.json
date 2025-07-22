@@ -1,31 +1,64 @@
 {
-	"name": "add-stamp",
-	"private": true,
-	"type": "module",
+  "name": "add-stamp",
   "version": "1.0.5",
-	"scripts": {
-		"build": "npm run build:wasm && nuxt build",
-		"build:wasm": "cd wasm && wasm-pack build --target web --out-dir pkg --out-name image_stamper && cd .. && if not exist public\\wasm mkdir public\\wasm && xcopy /Y /E wasm\\pkg\\* public\\wasm\\",
-		"copy:wasm": "if not exist public\\wasm mkdir public\\wasm && xcopy /Y /E wasm\\pkg\\* public\\wasm\\",
-		"dev": "nuxt dev --port 5654",
-		"dev:wasm": "npm run build:wasm && npm run dev",
-		"generate": "nuxt generate",
-		"preview": "npm run build && wrangler dev",
-		"postinstall": "nuxt prepare",
-		"deploy": "npm run build && wrangler deploy",
-		"cf-typegen": "wrangler types",
-		"clean:wasm": "if exist wasm\\pkg rmdir /s /q wasm\\pkg && if exist public\\wasm\\*.js del /q public\\wasm\\*.js && if exist public\\wasm\\*.wasm del /q public\\wasm\\*.wasm && if exist public\\wasm\\*.d.ts del /q public\\wasm\\*.d.ts"
-	},
-	"dependencies": {
-		"@tailwindcss/vite": "^4.1.11",
-		"nuxt": "^4.0.0",
-		"tailwindcss": "^4.1.11",
-		"vue": "^3.5.17",
-		"vue-router": "^4.5.1"
-	},
-	"devDependencies": {
-		"nitro-cloudflare-dev": "^0.2.2",
-		"nitropack": "^2.12.3",
-		"wrangler": "^4.25.0"
-	}
+  "description": "A Nuxt 3 application for applying watermarks to images using WebAssembly (WASM) for high-performance image processing",
+  "keywords": [
+    "nuxt4",
+    "vue3",
+    "typescript",
+    "tailwindcss",
+    "webassembly",
+    "wasm",
+    "rust",
+    "image-processing",
+    "watermark",
+    "stamp",
+    "batch-processing",
+    "cloudflare-workers",
+    "browser",
+    "images",
+    "image-processing",
+    "batch-processing",
+    "wrangler"
+  ],
+  "homepage": "https://github.com/howbizarre/add-stamp#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/howbizarre/add-stamp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/howbizarre/add-stamp/issues"
+  },
+  "author": {
+    "name": "howbizarre",
+    "url": "https://github.com/howbizarre"
+  },
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "npm run build:wasm && nuxt build",
+    "build:wasm": "cd wasm && wasm-pack build --target web --out-dir pkg --out-name image_stamper && cd .. && if not exist public\\wasm mkdir public\\wasm && xcopy /Y /E wasm\\pkg\\* public\\wasm\\",
+    "copy:wasm": "if not exist public\\wasm mkdir public\\wasm && xcopy /Y /E wasm\\pkg\\* public\\wasm\\",
+    "dev": "nuxt dev --port 5654",
+    "dev:wasm": "npm run build:wasm && npm run dev",
+    "generate": "nuxt generate",
+    "preview": "npm run build && wrangler dev",
+    "postinstall": "nuxt prepare",
+    "deploy": "npm run build && wrangler deploy",
+    "cf-typegen": "wrangler types",
+    "clean:wasm": "if exist wasm\\pkg rmdir /s /q wasm\\pkg && if exist public\\wasm\\*.js del /q public\\wasm\\*.js && if exist public\\wasm\\*.wasm del /q public\\wasm\\*.wasm && if exist public\\wasm\\*.d.ts del /q public\\wasm\\*.d.ts"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.1.11",
+    "nuxt": "^4.0.0",
+    "tailwindcss": "^4.1.11",
+    "vue": "^3.5.17",
+    "vue-router": "^4.5.1"
+  },
+  "devDependencies": {
+    "nitro-cloudflare-dev": "^0.2.2",
+    "nitropack": "^2.12.3",
+    "wrangler": "^4.25.0"
+  }
 }
