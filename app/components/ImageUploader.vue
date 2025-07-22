@@ -9,7 +9,7 @@
 
       <template v-if="hasSelectedImages">
         <button @click="resetImages"
-                class="px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-xs font-medium rounded transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
+                class="bg-red-500 hover:bg-red-600 text-white focus:ring-red-500">
           Reset Images
         </button>
       </template>
@@ -23,7 +23,7 @@
 
         <div class="flex text-sm text-gray-600">
           <label for="file-upload" class="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
-            <span>Upload files</span>
+            <span>Add images</span>
             <input id="file-upload" name="file-upload" type="file" class="sr-only" multiple @change="handleFileChange" accept="image/*">
           </label>
 

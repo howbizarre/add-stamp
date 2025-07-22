@@ -26,3 +26,36 @@ logs
 # wrangler files
 .wrangler
 .dev.vars*
+
+# WASM build outputs
+wasm/pkg/
+wasm/target/
+public/wasm/
+!public/wasm/.gitkeep
+
+# Rust/Cargo files
+Cargo.lock
+
+# Build scripts
+build-wasm.sh
+build-wasm.bat
+
+# Generated TypeScript declarations
+*.d.ts
+!env.d.ts
+!worker-configuration.d.ts
+
+# Editor and IDE files
+.vscode/settings.json
+.vscode/launch.json
+*.swp
+*.swo
+*~
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+
+# Temporary files
+*.tmp
+*.temp
