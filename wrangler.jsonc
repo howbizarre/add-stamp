@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "psn-web-galleries",
+  "name": "add-stamp",
   "compatibility_date": "2025-07-18",
   "observability": { "enabled": true },
   "placement": { "mode": "smart" },

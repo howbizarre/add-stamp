@@ -21,8 +21,8 @@ For those who want to get up and running immediately:
 
 ```bash
 # 1. Clone and navigate to the project
-git clone https://github.com/howbizarre/psn-web-galleries.git
-cd psn-web-galleries
+git clone https://github.com/howbizarre/add-stamp.git
+cd add-stamp
 
 # 2. Install all dependencies
 npm install
@@ -31,7 +31,7 @@ npm install
 npm run dev:wasm
 ```
 
-Then visit [http://localhost:5533](http://localhost:5533) to use the application.
+Then visit [http://localhost:5654](http://localhost:5654) to use the application.
 
 **Note:** You need Rust and wasm-pack installed (see Prerequisites section below for detailed installation instructions).
 
@@ -76,8 +76,8 @@ Follow these steps to set up the project on your local environment:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/howbizarre/psn-web-galleries.git
-cd psn-web-galleries
+git clone https://github.com/howbizarre/add-stamp.git
+cd add-stamp
 ```
 
 ### 2. Install Dependencies
@@ -121,7 +121,7 @@ Make sure the following files exist in `public/wasm/`:
 
 ## Development Server
 
-Start the development server on `http://localhost:5533`:
+Start the development server on `http://localhost:5654`:
 
 ```bash
 # npm
@@ -137,7 +137,7 @@ yarn dev
 bun run dev
 ```
 
-The application will be available at [http://localhost:5533](http://localhost:5533)
+The application will be available at [http://localhost:5654](http://localhost:5654)
 
 ## Usage
 
@@ -392,7 +392,7 @@ If the development server fails to start:
 ## Project Structure
 
 ```
-psn-web-galleries/
+add-stamp/
 ├── app/
 │   ├── assets/
 │   │   ├── css/             # Styling files

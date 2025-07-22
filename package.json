@@ -1,13 +1,13 @@
 {
-	"name": "psn-web-galleries",
+	"name": "add-stamp",
 	"private": true,
 	"type": "module",
-  "version": "1.0.3",
+  "version": "1.0.5",
 	"scripts": {
 		"build": "npm run build:wasm && nuxt build",
 		"build:wasm": "cd wasm && wasm-pack build --target web --out-dir pkg --out-name image_stamper && cd .. && if not exist public\\wasm mkdir public\\wasm && xcopy /Y /E wasm\\pkg\\* public\\wasm\\",
 		"copy:wasm": "if not exist public\\wasm mkdir public\\wasm && xcopy /Y /E wasm\\pkg\\* public\\wasm\\",
-		"dev": "nuxt dev --port 5533",
+		"dev": "nuxt dev --port 5654",
 		"dev:wasm": "npm run build:wasm && npm run dev",
 		"generate": "nuxt generate",
 		"preview": "npm run build && wrangler dev",
