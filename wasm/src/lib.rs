@@ -1,5 +1,7 @@
 use wasm_bindgen::prelude::*;
 use image::{ImageBuffer, Rgba, imageops};
+use imageproc::drawing::draw_text_mut;
+use rusttype::{Font, Scale};
 
 #[wasm_bindgen]
 extern "C" {
@@ -65,6 +67,11 @@ impl ImageStamper {
 
     #[wasm_bindgen]
     pub fn apply_stamp_with_options(&self, image_bytes: &[u8], quality: f32, format: &str) -> Result<Vec<u8>, JsValue> {
+        self.apply_stamp_with_options_and_text(image_bytes, quality, format, "")
+    }
+
+    #[wasm_bindgen]
+    pub fn apply_stamp_with_options_and_text(&self, image_bytes: &[u8], quality: f32, format: &str, filename: &str) -> Result<Vec<u8>, JsValue> {
         if self.stamp_data.is_empty() {
             return Err(JsValue::from_str("Stamp not set"));
         }
@@ -88,15 +95,19 @@ impl ImageStamper {
             self.stamp_data.clone()
         ).ok_or_else(|| JsValue::from_str("Failed to create stamp image buffer"))?;
 
-        // Calculate scaling to cover the image while maintaining aspect ratio
-        let scale_x = img_width as f32 / self.stamp_width as f32;
-        let scale_y = img_height as f32 / self.stamp_height as f32;
-        let scale = scale_x.max(scale_y); // Use max to cover the entire image
+        // Calculate scaling to contain the stamp within the image with 10px padding
+        let padding = 10u32;
+        let available_width = img_width.saturating_sub(padding * 2);
+        let available_height = img_height.saturating_sub(padding * 2);
+        
+        let scale_x = available_width as f32 / self.stamp_width as f32;
+        let scale_y = available_height as f32 / self.stamp_height as f32;
+        let scale = scale_x.min(scale_y); // Use min to contain within the image
 
         let new_stamp_width = (self.stamp_width as f32 * scale) as u32;
         let new_stamp_height = (self.stamp_height as f32 * scale) as u32;
 
-        console_log!("Scaling stamp to: {}x{} (scale: {:.2})", new_stamp_width, new_stamp_height, scale);
+        console_log!("Scaling stamp to: {}x{} (scale: {:.2}) with {}px padding", new_stamp_width, new_stamp_height, scale, padding);
 
         // Resize stamp
         let resized_stamp = imageops::resize(
@@ -106,23 +117,19 @@ impl ImageStamper {
             imageops::FilterType::Lanczos3
         );
 
-        // Calculate position to center the stamp
-        let x_offset = if new_stamp_width > img_width {
-            0i32.saturating_sub(((new_stamp_width - img_width) / 2) as i32)
-        } else {
-            ((img_width - new_stamp_width) / 2) as i32
-        };
-        
-        let y_offset = if new_stamp_height > img_height {
-            0i32.saturating_sub(((new_stamp_height - img_height) / 2) as i32)
-        } else {
-            ((img_height - new_stamp_height) / 2) as i32
-        };
+        // Calculate position to center the stamp with padding
+        let x_offset = ((img_width - new_stamp_width) / 2) as i32;
+        let y_offset = ((img_height - new_stamp_height) / 2) as i32;
 
         console_log!("Stamp position: ({}, {})", x_offset, y_offset);
 
         // Apply stamp with 50% opacity
         self.blend_images(&mut rgba_img, &resized_stamp, x_offset, y_offset, 0.5);
+
+        // Add filename text watermark if filename is provided
+        if !filename.is_empty() {
+            self.add_text_watermark(&mut rgba_img, filename);
+        }
 
         // Convert to the specified format with quality
         let output_data = self.encode_image_with_format(&rgba_img, quality, format)?;
@@ -167,6 +174,96 @@ impl ImageStamper {
         
         console_log!("Generated {} image, size: {} bytes (quality: {}%)", format, buffer.len(), quality);
         Ok(buffer)
+    }
+
+    fn add_text_watermark(&self, img: &mut ImageBuffer<Rgba<u8>, Vec<u8>>, filename: &str) {
+        // Include Ubuntu-M.ttf font
+        let font_data = include_bytes!("../Ubuntu-M.ttf");
+        
+        match Font::try_from_bytes(font_data) {
+            Some(font) => {
+                let font_size = 32.0;
+                let scale = Scale::uniform(font_size);
+                let padding_bottom = 10;
+                
+                // Text color: #7d7d7d with 50% opacity
+                let text_color = Rgba([125u8, 125u8, 125u8, 128u8]); // RGB(125,125,125) with 128/255 = 0.5 (50% opacity)
+                
+                // Calculate text positioning
+                let img_width = img.width() as i32;
+                let img_height = img.height() as i32;
+                
+                // Position text at bottom center with padding
+                let y_position = img_height - padding_bottom - (font_size as i32);
+                
+                // Calculate text width to center it
+                let v_metrics = font.v_metrics(scale);
+                let glyphs: Vec<_> = font
+                    .layout(filename, scale, rusttype::point(0.0, v_metrics.ascent))
+                    .collect();
+                
+                let text_width = glyphs
+                    .iter()
+                    .rev()
+                    .map(|g| g.position().x as f32 + g.unpositioned().h_metrics().advance_width)
+                    .next()
+                    .unwrap_or(0.0);
+                
+                let x_position = ((img_width as f32 - text_width) / 2.0).max(10.0) as i32;
+                
+                // Draw the text using imageproc (no background)
+                draw_text_mut(img, text_color, x_position, y_position, scale, &font, filename);
+            },
+            None => {
+                console_log!("Failed to load Ubuntu font, falling back to simple text rendering");
+                self.draw_fallback_text(img, filename);
+            }
+        }
+    }
+    
+    fn draw_fallback_text(&self, img: &mut ImageBuffer<Rgba<u8>, Vec<u8>>, filename: &str) {
+        // Fallback to simple rectangular text if font loading fails
+        let font_size = 32;
+        let padding_bottom = 10;
+        
+        let img_width = img.width();
+        let img_height = img.height();
+        
+        // Text color: #7d7d7d with 50% opacity
+        let text_color = Rgba([125u8, 125u8, 125u8, 128u8]); // RGB(125,125,125) with 128/255 = 0.5 (50% opacity)
+        
+        // Calculate text positioning
+        let char_width = 16;
+        let text_width = filename.len() as u32 * char_width;
+        let text_height = font_size;
+        
+        let x_start = if text_width < img_width {
+            (img_width - text_width) / 2
+        } else {
+            10
+        };
+        
+        let y_start = img_height.saturating_sub(text_height + padding_bottom);
+        
+        // Draw simple text (no background)
+        for (i, _) in filename.chars().enumerate() {
+            let char_x = x_start + (i as u32 * char_width);
+            
+            // Draw simple rectangle for each character
+            for py in y_start + 5..y_start + text_height - 5 {
+                for px in char_x + 2..char_x + char_width - 2 {
+                    if px < img_width && py < img_height {
+                        let pixel = img.get_pixel_mut(px, py);
+                        let alpha = text_color[3] as f32 / 255.0;
+                        let inv_alpha = 1.0 - alpha;
+                        
+                        pixel[0] = ((pixel[0] as f32 * inv_alpha) + (text_color[0] as f32 * alpha)) as u8;
+                        pixel[1] = ((pixel[1] as f32 * inv_alpha) + (text_color[1] as f32 * alpha)) as u8;
+                        pixel[2] = ((pixel[2] as f32 * inv_alpha) + (text_color[2] as f32 * alpha)) as u8;
+                    }
+                }
+            }
+        }
     }
 
     fn blend_images(

@@ -72,19 +72,23 @@ export class ImageStampingService {
         const arrayBuffer = await image.arrayBuffer();
         const uint8Array = new Uint8Array(arrayBuffer);
         
-        // Use the new method with options
-        const stampedImageData = await this.stamper.apply_stamp_with_options(
+        // Extract filename without extension for the watermark
+        const fileNameForText = image.name.replace(/\.[^/.]+$/, '');
+        
+        // Use the new method with options and filename
+        const stampedImageData = await this.stamper.apply_stamp_with_options_and_text(
           uint8Array, 
           quality, 
-          format
+          format,
+          fileNameForText
         );
         
         // Create new file with appropriate extension
         const originalName = image.name;
-        const nameWithoutExt = originalName.replace(/\.[^/.]+$/, '');
+        const fileNameForWatermark = originalName.replace(/\.[^/.]+$/, '');
         const extension = format === 'jpg' ? 'jpg' : 'webp';
         const mimeType = format === 'jpg' ? 'image/jpeg' : 'image/webp';
-        const newFileName = `${nameWithoutExt}_stamped.${extension}`;
+        const newFileName = `${fileNameForWatermark}_stamped.${extension}`;
         
         const stampedFile = new File([stampedImageData], newFileName, {
           type: mimeType
