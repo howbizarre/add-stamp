@@ -2,6 +2,8 @@
 
 A Nuxt 3 application that allows users to apply watermarks to images using WebAssembly (WASM) for high-performance image processing.
 
+> **📚 WASM Development Guide**: For detailed information about the WebAssembly module, Rust implementation, and build processes, see [README-WASM.md](README-WASM.md).
+
 ## Features
 
 - 🖼️ Upload multiple images for batch processing
