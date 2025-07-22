@@ -59,7 +59,7 @@
           <p class="pl-1">or drag and drop it here</p>
         </div>
 
-        <p class="text-xs text-gray-500">PNG files only, up to 10MB</p>
+        <p class="text-xs text-gray-500">PNG file only, up to 1MB</p>
       </div>
 
       <!-- Image Preview (shows only when an image is selected) -->

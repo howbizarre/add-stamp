@@ -154,14 +154,13 @@ const saveStampedImages = async () => {
 <template>
   <div class="container mx-auto p-4 sm:p-6 lg:p-8">
     <header class="text-center mb-8">
-      <h1 class="text-4xl font-bold text-gray-800">My Photo Gallery</h1>
-      <p class="text-lg text-gray-600">Upload and browse your photos</p>
+      <h1 class="text-4xl font-bold text-gray-800">Add Stamp to Photos</h1>
+      <p class="text-lg text-gray-600">Add a stamp (watermark) to the set of images and save them locally</p>
     </header>
 
     <main class="mx-auto bg-white p-6 rounded-lg space-y-8">
       <!-- Upload Section -->
       <section>
-        <h2 class="text-2xl font-semibold text-gray-700 mb-4">Upload Files</h2>
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <!-- Multiple Images Uploader -->
           <div>
@@ -190,8 +189,6 @@ const saveStampedImages = async () => {
       <section>
         <div class="flex justify-between items-center mb-4">
           <div class="flex-1">
-            <h2 v-if="!canAddStamp && !isStamping && !showStampedLabel" class="text-2xl font-semibold text-gray-700">Gallery</h2>
-
             <button v-if="canAddStamp && !isStamping"
                     @click="addStampToImages"
                     class="bg-lime-500 hover:bg-lime-600 text-white focus:ring-lime-500">
