@@ -216,7 +216,7 @@ const saveStampedImages = async () => {
             <button v-if="showSaveButton"
                     @click="saveStampedImages"
                     :disabled="isSaving"
-                    :class="{ 'cursor-not-allowed': isSaving }"
+                    :class="{ 'cursor-not-allowed!': isSaving }"
                     class="bg-green-500 hover:bg-green-600 text-white focus:ring-green-500">
               Save to Directory
             </button>

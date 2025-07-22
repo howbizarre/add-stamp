@@ -5,11 +5,14 @@ A Nuxt 3 application that allows users to apply watermarks to images using WebAs
 ## Features
 
 - 🖼️ Upload multiple images for batch processing
-- 🏷️ Select PNG stamp/watermark images
+- 🏷️ Select PNG stamp/watermark images with intelligent positioning
+- 📝 Automatic filename text watermark with custom fonts
 - ⚡ High-performance image processing using Rust/WASM
 - 📁 Save processed images to a specific directory (File System Access API)
 - 🎨 Support for JPG and WebP output formats
 - 🔧 Configurable quality settings
+- 🎯 Smart watermark scaling with "contain" behavior and padding
+- 🔤 Adaptive font sizing for consistent text appearance
 - 💾 Automatic fallback to downloads if directory access not supported
 
 ## Quick Start
@@ -143,11 +146,21 @@ The application will be available at [http://localhost:5533](http://localhost:55
 3. **Add Stamp**: Click "Add Stamp" to process all images with the selected watermark
 4. **Save Results**: Click "Save to Directory" to save all processed images to a folder of your choice
 
+### Watermarking Features
+
+- **Image Watermark**: PNG stamps are automatically scaled using "contain" behavior with 10px padding from image edges
+- **Text Watermark**: Each image automatically gets a text watermark with its filename
+- **Smart Positioning**: Watermarks are intelligently positioned to avoid overlapping with image content
+- **Adaptive Text**: Font size automatically adapts based on image dimensions for consistent appearance across all images
+- **Transparency**: Both image and text watermarks support transparency (50% opacity for text)
+
 ### Supported Features
 
 - **Input Formats**: JPG, PNG, WebP, and other common image formats
 - **Output Formats**: JPG (default) or WebP
 - **Watermark**: PNG images with transparency support
+- **Text Rendering**: Custom Ubuntu-M.ttf font with adaptive sizing
+- **Color Customization**: Text watermarks use #7d7d7d color with 50% opacity
 - **Quality Control**: Configurable compression quality (default: 75%)
 - **Batch Processing**: Process multiple images at once
 - **Directory Saving**: Save all processed images to a specific folder
@@ -175,6 +188,37 @@ npm run dev:wasm
 ### Making Changes to Vue/TypeScript Code
 
 Changes to files in the `app/` directory will be automatically reloaded by the development server.
+
+## Advanced Configuration
+
+### Watermark Settings
+
+The application provides several advanced watermarking options:
+
+- **Image Watermark Scaling**: Uses "contain" behavior to fit stamps within images with 10px padding
+- **Text Watermark Font**: Custom Ubuntu-M.ttf font for professional appearance  
+- **Adaptive Font Sizing**: Font size automatically calculates as 4% of the minimum image dimension (min: 16px, max: 48px)
+- **Text Opacity**: 50% transparency for subtle text watermarks
+- **Text Color**: #7d7d7d (medium gray) for optimal contrast
+- **Positioning**: Smart placement to avoid overlapping with existing content
+
+### Customizing Fonts
+
+To use a different font for text watermarks:
+
+1. Add your TTF font file to the `wasm/` directory
+2. Update the font loading in `wasm/src/lib.rs`:
+   ```rust
+   let font_data = include_bytes!("../YourFont.ttf");
+   ```
+3. Rebuild the WASM module: `npm run build:wasm`
+
+### Performance Optimization
+
+- WASM processing enables near-native performance for image operations
+- Batch processing reduces overhead for multiple images
+- Adaptive font sizing ensures consistent rendering across different image sizes
+- Memory-efficient image handling for large files
 
 ## Available Scripts
 
@@ -287,6 +331,43 @@ If you encounter issues building the WASM module:
    npm run build:wasm
    ```
 
+### Font and Text Rendering Issues
+
+If text watermarks are not appearing correctly:
+
+1. **Verify font file exists:**
+   - Check that `Ubuntu-M.ttf` is present in the `wasm/` directory
+   - Ensure the font file is not corrupted
+
+2. **Font loading errors:**
+   ```bash
+   # Check WASM build output for font-related errors
+   cd wasm
+   wasm-pack build --target web --out-dir pkg --out-name image_stamper
+   ```
+
+3. **Text not visible:**
+   - Verify image dimensions are sufficient (minimum 16px font size)
+   - Check that text color contrasts with image background
+   - Ensure opacity settings are correct (50% transparency)
+
+### Image Processing Issues
+
+If watermarking fails or produces unexpected results:
+
+1. **Supported image formats:**
+   - Input: JPG, PNG, WebP, BMP, TIFF
+   - Output: JPG, WebP
+   - Watermark stamps: PNG with transparency
+
+2. **Memory limitations:**
+   - Very large images (>50MB) may cause WASM memory issues
+   - Consider resizing extremely large images before processing
+
+3. **Watermark positioning:**
+   - Stamps use "contain" scaling with 10px padding
+   - Text watermarks adapt font size based on image dimensions
+
 ### Development Server Issues
 
 If the development server fails to start:
@@ -313,6 +394,9 @@ If the development server fails to start:
 ```
 psn-web-galleries/
 ├── app/
+│   ├── assets/
+│   │   ├── css/             # Styling files
+│   │   └── fonts/           # Custom fonts (Ubuntu-M.ttf)
 │   ├── components/          # Vue components
 │   │   ├── ImageGallery.vue
 │   │   ├── ImageUploader.vue
@@ -322,8 +406,9 @@ psn-web-galleries/
 │   └── app.vue             # Main application component
 ├── wasm/                   # Rust/WASM source code
 │   ├── src/
-│   │   └── lib.rs          # Image processing logic
-│   ├── Cargo.toml          # Rust dependencies
+│   │   └── lib.rs          # Image processing logic with text rendering
+│   ├── Ubuntu-M.ttf        # Custom font for text watermarks
+│   ├── Cargo.toml          # Rust dependencies (image, imageproc, rusttype)
 │   └── pkg/                # Generated WASM files
 ├── public/
 │   └── wasm/               # Deployed WASM files
@@ -334,6 +419,9 @@ psn-web-galleries/
 
 - **Frontend**: Nuxt 3, Vue 3, TypeScript, Tailwind CSS
 - **Image Processing**: Rust, WebAssembly (WASM)
+- **Text Rendering**: rusttype crate with TrueType font support
+- **Image Libraries**: image crate, imageproc for advanced operations
+- **Font Assets**: Custom Ubuntu-M.ttf font with adaptive sizing
 - **Build Tools**: Vite, wasm-pack
 - **File Handling**: File System Access API with download fallback
 
