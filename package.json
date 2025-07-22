@@ -2,7 +2,7 @@
 	"name": "psn-web-galleries",
 	"private": true,
 	"type": "module",
-  "version": "0.0.4",
+  "version": "1.0.3",
 	"scripts": {
 		"build": "npm run build:wasm && nuxt build",
 		"build:wasm": "cd wasm && wasm-pack build --target web --out-dir pkg --out-name image_stamper && cd .. && if not exist public\\wasm mkdir public\\wasm && xcopy /Y /E wasm\\pkg\\* public\\wasm\\",
