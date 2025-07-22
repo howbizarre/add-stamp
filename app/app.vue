@@ -154,7 +154,7 @@ const saveStampedImages = async () => {
 <template>
   <div class="container mx-auto p-4 sm:p-6 lg:p-8">
     <header class="text-center mb-8">
-      <h1 class="text-4xl font-bold text-gray-800">Add Stamp to Photos</h1>
+      <h1 class="text-4xl font-bold text-gray-800">Image Watermarking App</h1>
       <p class="text-lg text-gray-600">Add a stamp (watermark) to the set of images and save them locally</p>
     </header>
 

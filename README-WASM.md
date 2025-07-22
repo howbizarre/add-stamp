@@ -1,4 +1,4 @@
-# PSN Web Galleries
+# Image Watermarking App
 
 Уеб приложение за галерии с функционалност за добавяне на воден знак към снимки чрез WASM.
 

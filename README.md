@@ -1,4 +1,4 @@
-# PSN Web Galleries - Image Watermarking App
+# Image Watermarking App
 
 A Nuxt 3 application that allows users to apply watermarks to images using WebAssembly (WASM) for high-performance image processing.
 
@@ -13,6 +13,7 @@ A Nuxt 3 application that allows users to apply watermarks to images using WebAs
 - 🔧 Configurable quality settings
 - 🎯 Smart watermark scaling with "contain" behavior and padding
 - 🔤 Adaptive font sizing for consistent text appearance
+- 🎚️ Adjustable stamp opacity (1-100%) with real-time preview
 - 💾 Automatic fallback to downloads if directory access not supported
 
 ## Quick Start
@@ -143,22 +144,25 @@ The application will be available at [http://localhost:5654](http://localhost:56
 
 1. **Select Images**: Click "Upload Images" to select multiple images you want to watermark
 2. **Choose Stamp**: Click "Choose PNG Stamp" to select a PNG image that will be used as a watermark
-3. **Add Stamp**: Click "Add Stamp" to process all images with the selected watermark
-4. **Save Results**: Click "Save to Directory" to save all processed images to a folder of your choice
+3. **Adjust Opacity**: Use the opacity slider (1-100%) to control stamp transparency - default is 75%
+4. **Add Stamp**: Click "Add Stamp" to process all images with the selected watermark and opacity
+5. **Save Results**: Click "Save to Directory" to save all processed images to a folder of your choice
 
 ### Watermarking Features
 
 - **Image Watermark**: PNG stamps are automatically scaled using "contain" behavior with 10px padding from image edges
+- **Adjustable Opacity**: Control stamp transparency from 1% (nearly invisible) to 100% (fully opaque)
 - **Text Watermark**: Each image automatically gets a text watermark with its filename
 - **Smart Positioning**: Watermarks are intelligently positioned to avoid overlapping with image content
 - **Adaptive Text**: Font size automatically adapts based on image dimensions for consistent appearance across all images
-- **Transparency**: Both image and text watermarks support transparency (50% opacity for text)
+- **Transparency**: Text watermarks use 50% opacity for subtle branding
 
 ### Supported Features
 
 - **Input Formats**: JPG, PNG, WebP, and other common image formats
 - **Output Formats**: JPG (default) or WebP
 - **Watermark**: PNG images with transparency support
+- **Opacity Control**: Adjustable stamp opacity from 1% to 100% (default: 75%)
 - **Text Rendering**: Custom Ubuntu-M.ttf font with adaptive sizing
 - **Color Customization**: Text watermarks use #7d7d7d color with 50% opacity
 - **Quality Control**: Configurable compression quality (default: 75%)
@@ -196,11 +200,22 @@ Changes to files in the `app/` directory will be automatically reloaded by the d
 The application provides several advanced watermarking options:
 
 - **Image Watermark Scaling**: Uses "contain" behavior to fit stamps within images with 10px padding
+- **Stamp Opacity Control**: Adjustable transparency from 1% to 100% (default: 75%)
 - **Text Watermark Font**: Custom Ubuntu-M.ttf font for professional appearance  
 - **Adaptive Font Sizing**: Font size automatically calculates as 4% of the minimum image dimension (min: 16px, max: 48px)
 - **Text Opacity**: 50% transparency for subtle text watermarks
 - **Text Color**: #7d7d7d (medium gray) for optimal contrast
 - **Positioning**: Smart placement to avoid overlapping with existing content
+
+### Customizing Stamp Opacity
+
+The stamp opacity can be adjusted in real-time:
+
+1. Select a PNG stamp file
+2. Use the opacity input field (1-100%) next to the "Remove Stamp" button
+3. Default value is 75% for optimal visibility without overwhelming the image
+4. Lower values (1-50%) create subtle watermarks
+5. Higher values (75-100%) create more prominent branding
 
 ### Customizing Fonts
 
@@ -215,10 +230,12 @@ To use a different font for text watermarks:
 
 ### Performance Optimization
 
-- WASM processing enables near-native performance for image operations
-- Batch processing reduces overhead for multiple images
-- Adaptive font sizing ensures consistent rendering across different image sizes
-- Memory-efficient image handling for large files
+- **WASM Processing**: Near-native performance for image operations using Rust
+- **Batch Processing**: Reduces overhead for multiple images with progress tracking
+- **Adaptive Font Sizing**: Ensures consistent rendering across different image sizes
+- **Real-time Opacity Control**: Instant feedback without reprocessing
+- **Memory-efficient Handling**: Optimized for large files and batch operations
+- **Smart Caching**: WASM module loads once and reuses for all operations
 
 ## Available Scripts
 
@@ -351,6 +368,25 @@ If text watermarks are not appearing correctly:
    - Check that text color contrasts with image background
    - Ensure opacity settings are correct (50% transparency)
 
+### Opacity and Transparency Issues
+
+If stamp opacity is not working as expected:
+
+1. **Opacity not applying:**
+   - Verify the WASM module is properly compiled with the latest changes
+   - Check browser console for JavaScript errors
+   - Ensure opacity value is between 1-100
+
+2. **Stamp too transparent or too opaque:**
+   - Adjust the opacity slider (1-100%)
+   - Remember: 1% = nearly invisible, 100% = fully opaque
+   - Default 75% provides good balance for most images
+
+3. **WASM method errors:**
+   - If you see "apply_stamp_with_options_text_and_opacity is not a function"
+   - Rebuild WASM module: `npm run build:wasm`
+   - Clear browser cache and reload the page
+
 ### Image Processing Issues
 
 If watermarking fails or produces unexpected results:
@@ -437,7 +473,13 @@ add-stamp/
 
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under the MIT License. See the [LICENSE.md](LICENSE.md) file for details.
+
+### Third-Party Components
+
+- **Ubuntu-M.ttf Font**: Licensed under Ubuntu Font License (UFL)
+- **Rust Dependencies**: Various licenses (MIT/Apache-2.0) - see Cargo.toml
+- **JavaScript Dependencies**: Various licenses - see package.json
 
 ## Links
 
