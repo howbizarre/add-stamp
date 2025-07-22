@@ -72,6 +72,11 @@ impl ImageStamper {
 
     #[wasm_bindgen]
     pub fn apply_stamp_with_options_and_text(&self, image_bytes: &[u8], quality: f32, format: &str, filename: &str) -> Result<Vec<u8>, JsValue> {
+        self.apply_stamp_with_options_text_and_opacity(image_bytes, quality, format, filename, 50.0)
+    }
+
+    #[wasm_bindgen]
+    pub fn apply_stamp_with_options_text_and_opacity(&self, image_bytes: &[u8], quality: f32, format: &str, filename: &str, opacity: f32) -> Result<Vec<u8>, JsValue> {
         if self.stamp_data.is_empty() {
             return Err(JsValue::from_str("Stamp not set"));
         }
@@ -123,8 +128,9 @@ impl ImageStamper {
 
         console_log!("Stamp position: ({}, {})", x_offset, y_offset);
 
-        // Apply stamp with 50% opacity
-        self.blend_images(&mut rgba_img, &resized_stamp, x_offset, y_offset, 0.5);
+        // Apply stamp with custom opacity (convert from percentage to decimal)
+        let stamp_opacity = opacity / 100.0;
+        self.blend_images(&mut rgba_img, &resized_stamp, x_offset, y_offset, stamp_opacity);
 
         // Add filename text watermark if filename is provided
         if !filename.is_empty() {

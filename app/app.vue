@@ -4,6 +4,7 @@ import { useImageStamping } from '~/composables/useImageStamping';
 
 const selectedImages = ref<File[]>([]);
 const selectedPngImage = ref<File | null>(null);
+const stampOpacity = ref<number>(100);
 const stampedImages = ref<File[]>([]);
 const isStamping = ref(false);
 const stampingProgress = ref<StampingProgress>({ current: 0, total: 0, currentFileName: '' });
@@ -42,6 +43,10 @@ const handlePngImageReset = () => {
   isSaved.value = false;
 };
 
+const handleOpacityChanged = (opacity: number) => {
+  stampOpacity.value = opacity;
+};
+
 const canAddStamp = computed(() => {
   return selectedImages.value.length > 0 && selectedPngImage.value !== null && !isStamping.value && !isStampingComplete.value;
 });
@@ -76,10 +81,10 @@ const addStampToImages = async () => {
     }
     await setStamp(selectedPngImage.value);
 
-    // Apply stamp to all images with JPG format and 75% quality
+    // Apply stamp to all images with JPG format, 75% quality and custom opacity
     const results = await applyStampToImages(
       selectedImages.value,
-      { format: 'jpg', quality: 75 }, // JPG format as default with 75% quality
+      { format: 'jpg', quality: 75, opacity: stampOpacity.value }, // JPG format with custom opacity
       (progress: StampingProgress) => {
         stampingProgress.value = progress;
       }
@@ -170,8 +175,10 @@ const saveStampedImages = async () => {
           <div>
             <h3 class="text-lg font-medium text-gray-600 mb-3">Stamp Picker (PNG only)</h3>
             <StampPicker :selected-image="selectedPngImage"
+                         :opacity="stampOpacity"
                          @image-selected="handlePngImageSelected"
-                         @image-reset="handlePngImageReset" />
+                         @image-reset="handlePngImageReset"
+                         @opacity-changed="handleOpacityChanged" />
           </div>
         </div>
       </section>

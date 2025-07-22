@@ -7,6 +7,7 @@ export interface StampingProgress {
 export interface StampingOptions {
   quality?: number; // 1-100, default 75
   format?: 'jpg' | 'webp'; // default 'jpg'
+  opacity?: number; // 1-100, default 50 (for stamp opacity)
 }
 
 export class ImageStampingService {
@@ -52,6 +53,7 @@ export class ImageStampingService {
     // Set default options
     const quality = options.quality ?? 75;
     const format = options.format ?? 'jpg';
+    const opacity = options.opacity ?? 50;
 
     const results: { file: File; originalName: string }[] = [];
 
@@ -75,12 +77,13 @@ export class ImageStampingService {
         // Extract filename without extension for the watermark
         const fileNameForText = image.name.replace(/\.[^/.]+$/, '');
         
-        // Use the new method with options and filename
-        const stampedImageData = await this.stamper.apply_stamp_with_options_and_text(
+        // Use the new method with options, filename and opacity
+        const stampedImageData = await this.stamper.apply_stamp_with_options_text_and_opacity(
           uint8Array, 
           quality, 
           format,
-          fileNameForText
+          fileNameForText,
+          opacity
         );
         
         // Create new file with appropriate extension

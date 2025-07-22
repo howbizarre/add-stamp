@@ -8,12 +8,25 @@
       </template>
 
       <template v-if="selectedImage">
-        <div class="flex gap-2 items-center">
-          <span class="text-sm text-gray-600">{{ selectedImage.name }}</span>
+        <div class="flex justify-between items-center w-full">
           <button @click="resetImage"
-                  class="bg-red-500 hover:bg-red-600 text-white focus:ring-red-500">
+                  class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm focus:ring-red-500">
             Remove Stamp
           </button>
+          <strong class="text-sm text-gray-600">{{ selectedImage.name }}</strong>
+          <div class="flex items-center gap-2">
+            <div class="flex items-center gap-1">
+              <label for="stamp-opacity" class="text-sm text-gray-600">Opacity:</label>
+              <input
+                     id="stamp-opacity"
+                     v-model="stampOpacity"
+                     type="number"
+                     min="1"
+                     max="100"
+                     class="w-16 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+              <span class="text-sm text-gray-600">%</span>
+            </div>
+          </div>
         </div>
       </template>
     </div>
@@ -77,6 +90,7 @@
 <script lang='ts' setup>
 interface Props {
   selectedImage?: File | null;
+  opacity?: number;
 }
 
 interface ImageMetadata {
@@ -85,15 +99,17 @@ interface ImageMetadata {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  selectedImage: null
+  selectedImage: null,
+  opacity: 75
 });
 
-const emit = defineEmits(['image-selected', 'image-reset']);
+const emit = defineEmits(['image-selected', 'image-reset', 'opacity-changed']);
 
 const isDragOver = ref(false);
 const imagePreviewUrl = ref<string | null>(null);
 const imageMetadata = ref<ImageMetadata | null>(null);
 const errorMessage = ref<string>('');
+const stampOpacity = ref(props.opacity);
 
 // Watch for changes in the selected image
 watch(
@@ -122,6 +138,16 @@ watch(
   },
   { immediate: true }
 );
+
+// Watch for opacity changes
+watch(stampOpacity, (newOpacity) => {
+  emit('opacity-changed', newOpacity);
+});
+
+// Watch for props opacity changes
+watch(() => props.opacity, (newOpacity) => {
+  stampOpacity.value = newOpacity;
+});
 
 // Cleanup on unmount
 onUnmounted(() => {
