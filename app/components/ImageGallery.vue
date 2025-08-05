@@ -13,7 +13,7 @@ const props = defineProps({ images: Array as () => File[] });
 const images = ref<Image[]>([]);
 
 const getImageMetadata = (file: File): Promise<Image> => {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
 
@@ -41,6 +41,12 @@ const getImageMetadata = (file: File): Promise<Image> => {
       });
     };
 
+    img.onerror = () => {
+      // Clean up the URL on error to prevent memory leak
+      URL.revokeObjectURL(url);
+      reject(new Error(`Failed to load image: ${file.name}`));
+    };
+
     img.src = url;
   });
 };
@@ -48,9 +54,25 @@ const getImageMetadata = (file: File): Promise<Image> => {
 watch(
   () => props.images,
   async (newImages) => {
+    // Clean up existing URLs before processing new images
     images.value.forEach(meta => URL.revokeObjectURL(meta.url));
-    const metadataPromises = (newImages ?? []).map(file => getImageMetadata(file));
-    images.value = await Promise.all(metadataPromises);
+    images.value = [];
+
+    if (!newImages || newImages.length === 0) {
+      return;
+    }
+
+    try {
+      const metadataPromises = newImages.map(file => getImageMetadata(file));
+      images.value = await Promise.all(metadataPromises);
+    } catch (error) {
+      console.error('Error loading image metadata:', error);
+      // Keep existing images if some fail to load, but filter out failed ones
+      const settledPromises = await Promise.allSettled(newImages.map(file => getImageMetadata(file)));
+      images.value = settledPromises
+        .filter((result): result is PromiseFulfilledResult<Image> => result.status === 'fulfilled')
+        .map(result => result.value);
+    }
   },
   { immediate: true }
 );

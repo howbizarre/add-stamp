@@ -187,13 +187,20 @@ export class ImageStampingService {
     // For now, we'll just download them individually
     for (const { file } of stampedImages) {
       const url = URL.createObjectURL(file);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = file.name;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      try {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = file.name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        
+        // Add a small delay to ensure download starts before revoking URL
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } finally {
+        // Always revoke the URL to prevent memory leaks
+        URL.revokeObjectURL(url);
+      }
     }
   }
 }
