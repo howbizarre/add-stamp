@@ -12,7 +12,7 @@ const isStampingComplete = ref(false);
 const isSaving = ref(false);
 const isSaved = ref(false);
 const selectedDirectoryHandle = ref<any>(null);
-const savedPath = ref<string | null>(null);
+const saveMode = ref<'directory' | 'downloads'>('directory');
 
 const { initialize, setStamp, applyStampToImages, saveStampedImagesToSpecificDirectory, downloadStampedImages } = useImageStamping();
 
@@ -22,7 +22,7 @@ const handleImagesSelected = (images: File[]) => {
   isStampingComplete.value = false;
   isSaved.value = false;
   selectedDirectoryHandle.value = null;
-  savedPath.value = null;
+  saveMode.value = 'directory';
 };
 
 const handleImagesReset = () => {
@@ -31,21 +31,21 @@ const handleImagesReset = () => {
   isStampingComplete.value = false;
   isSaved.value = false;
   selectedDirectoryHandle.value = null;
-  savedPath.value = null;
+  saveMode.value = 'directory';
 };
 
 const handlePngImageSelected = (image: File) => {
   selectedPngImage.value = image;
   isStampingComplete.value = false;
   isSaved.value = false;
-  savedPath.value = null;
+  saveMode.value = 'directory';
 };
 
 const handlePngImageReset = () => {
   selectedPngImage.value = null;
   isStampingComplete.value = false;
   isSaved.value = false;
-  savedPath.value = null;
+  saveMode.value = 'directory';
 };
 
 const handleOpacityChanged = (opacity: number) => {
@@ -132,7 +132,7 @@ const saveStampedImages = async () => {
         } else {
           await downloadStampedImages(results);
           isSaved.value = true;
-          savedPath.value = 'downloads';
+          saveMode.value = 'downloads';
           isSaving.value = false;
           return;
         }
@@ -147,7 +147,7 @@ const saveStampedImages = async () => {
     }
 
     await saveStampedImagesToSpecificDirectory(results, selectedDirectoryHandle.value);
-    savedPath.value = `${selectedDirectoryHandle.value.name}/stamped-images`;
+    saveMode.value = 'directory';
     isSaved.value = true;
   } catch (error) {
     console.error('Error saving stamped images:', error);
@@ -237,8 +237,8 @@ const saveStampedImages = async () => {
             </div>
 
             <div v-if="isSaved" class="px-3 py-1 bg-green-100 text-green-800 text-sm font-medium rounded-full">
-              <span v-if="savedPath === 'downloads'">✓ Images downloaded individually</span>
-              <span v-else>✓ Saved to {{ savedPath }}</span>
+              <span v-if="saveMode === 'directory'">✓ Снимките са записани успешно в избраната от Вас директория.</span>
+              <span v-else>✓ Снимките бяха изтеглени индивидуално.</span>
             </div>
           </div>
         </div>
