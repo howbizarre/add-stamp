@@ -12,6 +12,7 @@ const isStampingComplete = ref(false);
 const isSaving = ref(false);
 const isSaved = ref(false);
 const selectedDirectoryHandle = ref<any>(null);
+const saveMode = ref<'directory' | 'downloads'>('directory');
 
 const { initialize, setStamp, applyStampToImages, saveStampedImagesToSpecificDirectory, downloadStampedImages } = useImageStamping();
 
@@ -21,6 +22,7 @@ const handleImagesSelected = (images: File[]) => {
   isStampingComplete.value = false;
   isSaved.value = false;
   selectedDirectoryHandle.value = null;
+  saveMode.value = 'directory';
 };
 
 const handleImagesReset = () => {
@@ -29,18 +31,21 @@ const handleImagesReset = () => {
   isStampingComplete.value = false;
   isSaved.value = false;
   selectedDirectoryHandle.value = null;
+  saveMode.value = 'directory';
 };
 
 const handlePngImageSelected = (image: File) => {
   selectedPngImage.value = image;
   isStampingComplete.value = false;
   isSaved.value = false;
+  saveMode.value = 'directory';
 };
 
 const handlePngImageReset = () => {
   selectedPngImage.value = null;
   isStampingComplete.value = false;
   isSaved.value = false;
+  saveMode.value = 'directory';
 };
 
 const handleOpacityChanged = (opacity: number) => {
@@ -110,15 +115,14 @@ const saveStampedImages = async () => {
     return;
   }
 
+  isSaving.value = true;
+
   try {
-    isSaving.value = true;
-    // Convert File objects back to the format expected by save function
     const results = stampedImages.value.map(file => ({
       file,
       originalName: file.name.replace(/_stamped\.(jpg|webp)$/, '')
     }));
 
-    // If we don't have a directory handle, ask for one
     if (!selectedDirectoryHandle.value) {
       try {
         if ('showDirectoryPicker' in window) {
@@ -126,27 +130,30 @@ const saveStampedImages = async () => {
             mode: 'readwrite'
           });
         } else {
-          // Fallback to downloads if File System Access API not supported
           await downloadStampedImages(results);
           isSaved.value = true;
+          saveMode.value = 'downloads';
+          isSaving.value = false;
           return;
         }
       } catch (error) {
         if ((error as any).name === 'AbortError') {
           console.log('User cancelled directory selection');
+          isSaving.value = false;
           return;
         }
         throw error;
       }
     }
 
-    // Use the directory handle to save directly
     await saveStampedImagesToSpecificDirectory(results, selectedDirectoryHandle.value);
+    saveMode.value = 'directory';
     isSaved.value = true;
-    isSaving.value = false;
   } catch (error) {
     console.error('Error saving stamped images:', error);
     alert(`Error saving images: ${error}`);
+  } finally {
+    isSaving.value = false;
   }
 };
 </script>
@@ -229,9 +236,10 @@ const saveStampedImages = async () => {
               <span class="sr-only">Saving Images...</span>
             </div>
 
-            <span v-if="isSaved" class="px-3 py-1 bg-green-100 text-green-800 text-sm font-medium rounded-full">
-              ✓ Stamped Images
-            </span>
+            <div v-if="isSaved" class="px-3 py-1 bg-green-100 text-green-800 text-sm font-medium rounded-full">
+              <span v-if="saveMode === 'directory'">✓ The photos have been successfully saved.</span>
+              <span v-else>✓ The photos were downloaded.</span>
+            </div>
           </div>
         </div>
 
