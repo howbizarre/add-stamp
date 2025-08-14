@@ -1,7 +1,7 @@
 use wasm_bindgen::prelude::*;
 use image::{ImageBuffer, Rgba, imageops};
 use imageproc::drawing::draw_text_mut;
-use rusttype::{Font, Scale};
+use ab_glyph::{Font, FontRef};
 
 #[wasm_bindgen]
 extern "C" {
@@ -25,6 +25,7 @@ pub struct ImageStamper {
     stamp_data: Vec<u8>,
     stamp_width: u32,
     stamp_height: u32,
+    font: Option<FontRef<'static>>,
 }
 
 #[wasm_bindgen]
@@ -32,10 +33,19 @@ impl ImageStamper {
     #[wasm_bindgen(constructor)]
     pub fn new() -> ImageStamper {
         init_panic_hook();
+
+        // Load and parse the font once using ab_glyph
+        let font_data = include_bytes!("../Ubuntu-M.ttf");
+        let font = FontRef::try_from_slice(font_data).ok();
+        if font.is_none() {
+            console_log!("Warning: Failed to load embedded font.");
+        }
+
         ImageStamper {
             stamp_data: Vec::new(),
             stamp_width: 0,
             stamp_height: 0,
+            font,
         }
     }
 
@@ -56,27 +66,27 @@ impl ImageStamper {
     }
 
     #[wasm_bindgen]
-    pub fn apply_stamp(&self, image_bytes: &[u8]) -> Result<Vec<u8>, JsValue> {
+    pub fn apply_stamp(&mut self, image_bytes: &[u8]) -> Result<Vec<u8>, JsValue> {
         self.apply_stamp_with_options(image_bytes, 75.0, "jpg")
     }
 
     #[wasm_bindgen]
-    pub fn apply_stamp_with_quality(&self, image_bytes: &[u8], quality: f32) -> Result<Vec<u8>, JsValue> {
+    pub fn apply_stamp_with_quality(&mut self, image_bytes: &[u8], quality: f32) -> Result<Vec<u8>, JsValue> {
         self.apply_stamp_with_options(image_bytes, quality, "jpg")
     }
 
     #[wasm_bindgen]
-    pub fn apply_stamp_with_options(&self, image_bytes: &[u8], quality: f32, format: &str) -> Result<Vec<u8>, JsValue> {
+    pub fn apply_stamp_with_options(&mut self, image_bytes: &[u8], quality: f32, format: &str) -> Result<Vec<u8>, JsValue> {
         self.apply_stamp_with_options_and_text(image_bytes, quality, format, "")
     }
 
     #[wasm_bindgen]
-    pub fn apply_stamp_with_options_and_text(&self, image_bytes: &[u8], quality: f32, format: &str, filename: &str) -> Result<Vec<u8>, JsValue> {
+    pub fn apply_stamp_with_options_and_text(&mut self, image_bytes: &[u8], quality: f32, format: &str, filename: &str) -> Result<Vec<u8>, JsValue> {
         self.apply_stamp_with_options_text_and_opacity(image_bytes, quality, format, filename, 50.0)
     }
 
     #[wasm_bindgen]
-    pub fn apply_stamp_with_options_text_and_opacity(&self, image_bytes: &[u8], quality: f32, format: &str, filename: &str, opacity: f32) -> Result<Vec<u8>, JsValue> {
+    pub fn apply_stamp_with_options_text_and_opacity(&mut self, image_bytes: &[u8], quality: f32, format: &str, filename: &str, opacity: f32) -> Result<Vec<u8>, JsValue> {
         if self.stamp_data.is_empty() {
             return Err(JsValue::from_str("Stamp not set"));
         }
@@ -93,11 +103,12 @@ impl ImageStamper {
         
         console_log!("Image dimensions: {}x{}", img_width, img_height);
 
-        // Create stamp image buffer
+        // Temporarily take ownership of stamp data to avoid a clone
+        let stamp_data = std::mem::take(&mut self.stamp_data);
         let stamp_img = ImageBuffer::<Rgba<u8>, Vec<u8>>::from_raw(
             self.stamp_width, 
             self.stamp_height, 
-            self.stamp_data.clone()
+            stamp_data
         ).ok_or_else(|| JsValue::from_str("Failed to create stamp image buffer"))?;
 
         // Calculate scaling to contain the stamp within the image with 10px padding
@@ -114,13 +125,16 @@ impl ImageStamper {
 
         console_log!("Scaling stamp to: {}x{} (scale: {:.2}) with {}px padding", new_stamp_width, new_stamp_height, scale, padding);
 
-        // Resize stamp
+        // Resize stamp using a faster filter
         let resized_stamp = imageops::resize(
             &stamp_img,
             new_stamp_width,
             new_stamp_height,
-            imageops::FilterType::Lanczos3
+            imageops::FilterType::Triangle
         );
+
+        // Return ownership of the stamp data now that we are done with it.
+        self.stamp_data = stamp_img.into_raw();
 
         // Calculate position to center the stamp with padding
         let x_offset = ((img_width - new_stamp_width) / 2) as i32;
@@ -138,18 +152,18 @@ impl ImageStamper {
         }
 
         // Convert to the specified format with quality
-        let output_data = self.encode_image_with_format(&rgba_img, quality, format)?;
+        let output_data = self.encode_image_with_format(rgba_img, quality, format)?;
 
         console_log!("Generated {} image, size: {} bytes (quality: {}%)", format, output_data.len(), quality);
         Ok(output_data)
     }
 
-    fn encode_image_with_format(&self, img: &ImageBuffer<Rgba<u8>, Vec<u8>>, quality: f32, format: &str) -> Result<Vec<u8>, JsValue> {
+    fn encode_image_with_format(&self, img: ImageBuffer<Rgba<u8>, Vec<u8>>, quality: f32, format: &str) -> Result<Vec<u8>, JsValue> {
         use image::{DynamicImage, ImageFormat, codecs::jpeg::JpegEncoder, ImageEncoder};
         use std::io::Cursor;
         
         // Convert to DynamicImage
-        let dynamic_img = DynamicImage::ImageRgba8(img.clone());
+        let dynamic_img = DynamicImage::ImageRgba8(img);
         
         // Create a buffer to write the image data
         let mut buffer = Vec::new();
@@ -164,7 +178,7 @@ impl ImageStamper {
                 let encoder = JpegEncoder::new_with_quality(&mut cursor, quality as u8);
                 
                 let (width, height) = rgb_img.dimensions();
-                encoder.write_image(rgb_img.as_raw(), width, height, image::ColorType::Rgb8)
+                encoder.write_image(rgb_img.as_raw(), width, height, image::ColorType::Rgb8.into())
                     .map_err(|e| JsValue::from_str(&format!("Failed to encode JPEG: {}", e)))?;
             },
             "webp" => {
@@ -183,47 +197,47 @@ impl ImageStamper {
     }
 
     fn add_text_watermark(&self, img: &mut ImageBuffer<Rgba<u8>, Vec<u8>>, filename: &str) {
-        // Include Ubuntu-M.ttf font
-        let font_data = include_bytes!("../Ubuntu-M.ttf");
-        
-        match Font::try_from_bytes(font_data) {
-            Some(font) => {
-                let font_size = 32.0;
-                let scale = Scale::uniform(font_size);
-                let padding_bottom = 10;
-                
-                // Text color: #7d7d7d with 50% opacity
-                let text_color = Rgba([125u8, 125u8, 125u8, 128u8]); // RGB(125,125,125) with 128/255 = 0.5 (50% opacity)
-                
-                // Calculate text positioning
-                let img_width = img.width() as i32;
-                let img_height = img.height() as i32;
-                
-                // Position text at bottom center with padding
-                let y_position = img_height - padding_bottom - (font_size as i32);
-                
-                // Calculate text width to center it
-                let v_metrics = font.v_metrics(scale);
-                let glyphs: Vec<_> = font
-                    .layout(filename, scale, rusttype::point(0.0, v_metrics.ascent))
-                    .collect();
-                
-                let text_width = glyphs
-                    .iter()
-                    .rev()
-                    .map(|g| g.position().x as f32 + g.unpositioned().h_metrics().advance_width)
-                    .next()
-                    .unwrap_or(0.0);
-                
-                let x_position = ((img_width as f32 - text_width) / 2.0).max(10.0) as i32;
-                
-                // Draw the text using imageproc (no background)
-                draw_text_mut(img, text_color, x_position, y_position, scale, &font, filename);
-            },
-            None => {
-                console_log!("Failed to load Ubuntu font, falling back to simple text rendering");
-                self.draw_fallback_text(img, filename);
+        if let Some(font) = &self.font {
+            let font_size = 32.0;
+            let padding_bottom = 10;
+
+            // Text color: #7d7d7d with 50% opacity
+            let text_color = Rgba([125u8, 125u8, 125u8, 128u8]);
+
+            // Calculate text positioning
+            let img_width = img.width() as i32;
+            let img_height = img.height() as i32;
+
+            // Position text at bottom center with padding
+            let y_position = img_height - padding_bottom - (font_size as i32);
+
+            // Calculate text width using ab_glyph for centering
+            let scale_factor = if let Some(units) = font.units_per_em() {
+                font_size / units
+            } else {
+                // fallback if units_per_em is not available
+                font_size / 1000.0
+            };
+
+            let mut total_width = 0.0;
+            let mut last_glyph_id = None;
+            for c in filename.chars() {
+                let glyph_id = font.glyph_id(c);
+                if let Some(last_id) = last_glyph_id {
+                    total_width += font.kern_unscaled(last_id, glyph_id);
+                }
+                total_width += font.h_advance_unscaled(glyph_id);
+                last_glyph_id = Some(glyph_id);
             }
+            let text_width = total_width * scale_factor;
+
+            let x_position = ((img_width as f32 - text_width) / 2.0).max(10.0) as i32;
+
+            // Draw the text using imageproc (no background)
+            draw_text_mut(img, text_color, x_position, y_position, font_size, font, filename);
+        } else {
+            console_log!("Font not available, falling back to simple text rendering");
+            self.draw_fallback_text(img, filename);
         }
     }
     
