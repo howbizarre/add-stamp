@@ -237,8 +237,8 @@ const saveStampedImages = async () => {
             </div>
 
             <div v-if="isSaved" class="px-3 py-1 bg-green-100 text-green-800 text-sm font-medium rounded-full">
-              <span v-if="saveMode === 'directory'">✓ Снимките са записани успешно в избраната от Вас директория.</span>
-              <span v-else>✓ Снимките бяха изтеглени индивидуално.</span>
+              <span v-if="saveMode === 'directory'">✓ The photos have been successfully saved.</span>
+              <span v-else>✓ The photos were downloaded.</span>
             </div>
           </div>
         </div>
