@@ -5,6 +5,7 @@ import { useImageStamping } from '~/composables/useImageStamping';
 const selectedImages = ref<File[]>([]);
 const selectedPngImage = ref<File | null>(null);
 const stampOpacity = ref<number>(100);
+const addFilenameToWatermark = ref<boolean>(true);
 const stampedImages = ref<File[]>([]);
 const isStamping = ref(false);
 const stampingProgress = ref<StampingProgress>({ current: 0, total: 0, currentFileName: '' });
@@ -89,7 +90,12 @@ const addStampToImages = async () => {
     // Apply stamp to all images with JPG format, 75% quality and custom opacity
     const results = await applyStampToImages(
       selectedImages.value,
-      { format: 'jpg', quality: 75, opacity: stampOpacity.value }, // JPG format with custom opacity
+      {
+        format: 'jpg',
+        quality: 75,
+        opacity: stampOpacity.value,
+        addFilename: addFilenameToWatermark.value
+      }, // JPG format with custom opacity
       (progress: StampingProgress) => {
         stampingProgress.value = progress;
       }
@@ -173,8 +179,10 @@ const saveStampedImages = async () => {
           <div>
             <h3 class="text-lg font-medium text-gray-600 mb-3">Multiple Images Gallery</h3>
             <ImageUploader :selected-images="selectedImages"
+                           :add-filename="addFilenameToWatermark"
                            @images-selected="handleImagesSelected"
-                           @images-reset="handleImagesReset" />
+                           @images-reset="handleImagesReset"
+                           @update:add-filename="addFilenameToWatermark = $event" />
           </div>
 
           <!-- Stamp Picker -->

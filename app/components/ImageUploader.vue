@@ -8,6 +8,14 @@
       </template>
 
       <template v-if="hasSelectedImages">
+        <div class="flex items-center space-x-2">
+          <input id="add-filename-watermark"
+                 type="checkbox"
+                 :checked="props.addFilename"
+                 @change="$emit('update:addFilename', ($event.target as HTMLInputElement).checked)"
+                 class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+          <label for="add-filename-watermark" class="text-sm font-medium text-gray-700">Add filename to watermark</label>
+        </div>
         <button @click="resetImages"
                 class="bg-red-500 hover:bg-red-600 text-white focus:ring-red-500">
           Reset Images
@@ -37,13 +45,17 @@
 </template>
 
 <script lang='ts' setup>
-interface Props { selectedImages?: File[]; }
+interface Props {
+  selectedImages?: File[];
+  addFilename?: boolean;
+}
 
 const props = withDefaults(defineProps<Props>(), {
-  selectedImages: () => []
+  selectedImages: () => [],
+  addFilename: true
 });
 
-const emit = defineEmits(['images-selected', 'images-reset']);
+const emit = defineEmits(['images-selected', 'images-reset', 'update:addFilename']);
 
 const isDragOver = ref(false);
 
