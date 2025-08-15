@@ -8,6 +8,10 @@
       </template>
 
       <template v-if="hasSelectedImages">
+        <button @click="resetImages"
+                class="bg-red-500 hover:bg-red-600 text-white focus:ring-red-500">
+          Reset Images
+        </button>
         <div class="flex items-center space-x-2">
           <input id="add-filename-watermark"
                  type="checkbox"
@@ -16,10 +20,6 @@
                  class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
           <label for="add-filename-watermark" class="text-sm font-medium text-gray-700">Add filename to watermark</label>
         </div>
-        <button @click="resetImages"
-                class="bg-red-500 hover:bg-red-600 text-white focus:ring-red-500">
-          Reset Images
-        </button>
       </template>
     </div>
 
