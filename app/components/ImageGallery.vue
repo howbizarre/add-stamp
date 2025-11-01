@@ -11,6 +11,7 @@ interface Image {
 
 const props = defineProps({ images: Array as () => File[] });
 const images = ref<Image[]>([]);
+const isLoading = ref(false);
 
 const getImageMetadata = (file: File): Promise<Image> => {
   return new Promise((resolve, reject) => {
@@ -59,8 +60,11 @@ watch(
     images.value = [];
 
     if (!newImages || newImages.length === 0) {
+      isLoading.value = false;
       return;
     }
+
+    isLoading.value = true;
 
     try {
       const metadataPromises = newImages.map(file => getImageMetadata(file));
@@ -72,6 +76,8 @@ watch(
       images.value = settledPromises
         .filter((result): result is PromiseFulfilledResult<Image> => result.status === 'fulfilled')
         .map(result => result.value);
+    } finally {
+      isLoading.value = false;
     }
   },
   { immediate: true }
@@ -83,7 +89,17 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div v-if="images.length" class="columns-2 md:columns-3 lg:col-span-4 xl:columns-5 gap-2">
+  <!-- Loading State -->
+  <div v-if="isLoading" class="flex flex-col items-center justify-center py-16">
+    <div class="relative w-16 h-16">
+      <div class="absolute top-0 left-0 w-full h-full border-4 border-blue-200 rounded-full"></div>
+      <div class="absolute top-0 left-0 w-full h-full border-4 border-blue-600 rounded-full border-t-transparent animate-spin"></div>
+    </div>
+    <p class="mt-4 text-lg font-medium text-gray-700">Loading images...</p>
+  </div>
+
+  <!-- Image Gallery -->
+  <div v-else-if="images.length" class="columns-2 md:columns-3 lg:col-span-4 xl:columns-5 gap-2">
     <div v-for="image in images" :key="image.url" class="relative group mb-4">
       <img :src="image.url"
            :alt="`${image.meta.filename} - ${image.meta.orientation} image ${image.meta.width}x${image.meta.height}`"

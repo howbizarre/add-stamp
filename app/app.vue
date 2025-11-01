@@ -12,18 +12,14 @@ const stampingProgress = ref<StampingProgress>({ current: 0, total: 0, currentFi
 const isStampingComplete = ref(false);
 const isSaving = ref(false);
 const isSaved = ref(false);
-const selectedDirectoryHandle = ref<any>(null);
-const saveMode = ref<'directory' | 'downloads'>('directory');
 
-const { initialize, setStamp, applyStampToImages, saveStampedImagesToSpecificDirectory, downloadStampedImages } = useImageStamping();
+const { initialize, setStamp, applyStampToImages, downloadStampedImages } = useImageStamping();
 
 const handleImagesSelected = (images: File[]) => {
   selectedImages.value = images
   stampedImages.value = []; // Reset stamped images when new images are selected
   isStampingComplete.value = false;
   isSaved.value = false;
-  selectedDirectoryHandle.value = null;
-  saveMode.value = 'directory';
 };
 
 const handleImagesReset = () => {
@@ -31,22 +27,18 @@ const handleImagesReset = () => {
   stampedImages.value = [];
   isStampingComplete.value = false;
   isSaved.value = false;
-  selectedDirectoryHandle.value = null;
-  saveMode.value = 'directory';
 };
 
 const handlePngImageSelected = (image: File) => {
   selectedPngImage.value = image;
   isStampingComplete.value = false;
   isSaved.value = false;
-  saveMode.value = 'directory';
 };
 
 const handlePngImageReset = () => {
   selectedPngImage.value = null;
   isStampingComplete.value = false;
   isSaved.value = false;
-  saveMode.value = 'directory';
 };
 
 const handleOpacityChanged = (opacity: number) => {
@@ -129,31 +121,8 @@ const saveStampedImages = async () => {
       originalName: file.name.replace(/_stamped\.(jpg|webp)$/, '')
     }));
 
-    if (!selectedDirectoryHandle.value) {
-      try {
-        if ('showDirectoryPicker' in window) {
-          selectedDirectoryHandle.value = await (window as any).showDirectoryPicker({
-            mode: 'readwrite'
-          });
-        } else {
-          await downloadStampedImages(results);
-          isSaved.value = true;
-          saveMode.value = 'downloads';
-          isSaving.value = false;
-          return;
-        }
-      } catch (error) {
-        if ((error as any).name === 'AbortError') {
-          console.log('User cancelled directory selection');
-          isSaving.value = false;
-          return;
-        }
-        throw error;
-      }
-    }
-
-    await saveStampedImagesToSpecificDirectory(results, selectedDirectoryHandle.value);
-    saveMode.value = 'directory';
+    // Always download as ZIP for all browsers
+    await downloadStampedImages(results);
     isSaved.value = true;
   } catch (error) {
     console.error('Error saving stamped images:', error);
@@ -237,7 +206,7 @@ const saveStampedImages = async () => {
                     :disabled="isSaving"
                     :class="{ 'cursor-not-allowed!': isSaving }"
                     class="bg-green-500 hover:bg-green-600 text-white focus:ring-green-500">
-              Save to Directory
+              Download as ZIP
             </button>
 
             <div v-if="isSaving" class="animate-spin rounded-full h-6 w-6 border-b-2 border-black">
@@ -245,8 +214,7 @@ const saveStampedImages = async () => {
             </div>
 
             <div v-if="isSaved" class="px-3 py-1 bg-green-100 text-green-800 text-sm font-medium rounded-full">
-              <span v-if="saveMode === 'directory'">✓ The photos have been successfully saved.</span>
-              <span v-else>✓ The photos were downloaded.</span>
+              <span>✓ ZIP file downloaded successfully</span>
             </div>
           </div>
         </div>
