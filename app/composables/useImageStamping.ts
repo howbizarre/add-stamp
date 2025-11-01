@@ -1,3 +1,5 @@
+import JSZip from 'jszip';
+
 export interface StampingProgress {
   current: number;
   total: number;
@@ -185,24 +187,48 @@ export class ImageStampingService {
   }
 
   async downloadStampedImages(stampedImages: { file: File; originalName: string }[]): Promise<void> {
-    // Create a directory handle (this would need to be adapted based on your needs)
-    // For now, we'll just download them individually
-    for (const { file } of stampedImages) {
-      const url = URL.createObjectURL(file);
+    try {
+      // Create a ZIP archive with all stamped images
+      const zip = new JSZip();
+      const folder = zip.folder('stamped-images');
+      
+      if (!folder) {
+        throw new Error('Failed to create ZIP folder');
+      }
+
+      // Add all images to the ZIP
+      for (const { file } of stampedImages) {
+        const arrayBuffer = await file.arrayBuffer();
+        folder.file(file.name, arrayBuffer);
+      }
+
+      // Generate the ZIP file
+      const zipBlob = await zip.generateAsync({ 
+        type: 'blob',
+        compression: 'DEFLATE',
+        compressionOptions: { level: 6 }
+      });
+
+      // Download the ZIP file
+      const url = URL.createObjectURL(zipBlob);
       try {
         const a = document.createElement('a');
         a.href = url;
-        a.download = file.name;
+        a.download = `stamped-images-${new Date().getTime()}.zip`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         
-        // Add a small delay to ensure download starts before revoking URL
+        // Add a small delay before revoking URL
         await new Promise(resolve => setTimeout(resolve, 100));
       } finally {
-        // Always revoke the URL to prevent memory leaks
         URL.revokeObjectURL(url);
       }
+
+      console.log(`Successfully created ZIP archive with ${stampedImages.length} images`);
+    } catch (error) {
+      console.error('Error creating ZIP archive:', error);
+      throw new Error(`Failed to create ZIP archive: ${error}`);
     }
   }
 }
