@@ -50,7 +50,7 @@
     "clean:wasm": "node -e \"const fs=require('fs'),path=require('path');const rmrf=p=>{if(fs.existsSync(p)){if(fs.lstatSync(p).isDirectory()){fs.readdirSync(p).forEach(f=>rmrf(path.join(p,f)));fs.rmdirSync(p)}else{fs.unlinkSync(p)}}};rmrf('wasm/pkg');['js','wasm','d.ts'].forEach(ext=>fs.readdirSync('public/wasm').filter(f=>f.endsWith('.'+ext)).forEach(f=>fs.unlinkSync(path.join('public/wasm',f))));\""
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.1.12",
+    "@tailwindcss/vite": "^4.1.17",
     "jszip": "^3.10.1",
     "nuxt": "^4.2.0",
     "tailwindcss": "^4.1.17",
