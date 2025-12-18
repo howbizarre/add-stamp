@@ -55,7 +55,7 @@
     "nuxt": "^4.2.2",
     "tailwindcss": "^4.1.17",
     "vue": "^3.5.25",
-    "vue-router": "^4.5.1"
+    "vue-router": "^4.6.4"
   },
   "devDependencies": {
     "nitro-cloudflare-dev": "^0.2.2",
