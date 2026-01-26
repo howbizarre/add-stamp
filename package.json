@@ -59,7 +59,7 @@
   },
   "devDependencies": {
     "nitro-cloudflare-dev": "^0.2.2",
-    "nitropack": "^2.12.3",
+    "nitropack": "^2.13.1",
     "wrangler": "^4.33.1"
   }
 }
