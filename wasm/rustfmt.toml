@@ -1,0 +1,4 @@
+# 120 rather than the default 100: it matches the line lengths used across the TypeScript
+# side of this repo and keeps the pixel-blending expressions on one line, where they read as
+# a single formula.
+max_width = 120

@@ -1,24 +1,53 @@
 [package]
 name = "image-stamper"
-version = "0.1.0"
-edition = "2021"
+# Kept in sync with package.json so a deployed .wasm can be traced to a commit.
+version = "1.0.5"
+edition = "2024"
+rust-version = "1.91"
 
 [lib]
-crate-type = ["cdylib"]
+# rlib is required so integration tests in tests/ can link against the crate.
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 wasm-bindgen = "0.2.128"
-image = { version = "0.25.10", default-features = false, features = ["png", "jpeg", "webp"] }
-console_error_panic_hook = "0.1.7"
-imageproc = "0.25.1"
-rusttype = "0.9.3"
-ab_glyph = "0.2.32"
+# default-features = false only takes effect now that imageproc is gone: imageproc depended
+# on image with default features, and Cargo unions features across the whole graph, so an
+# AV1 encoder, OpenEXR, TIFF, GIF and QOI were compiled into the wasm binary regardless.
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
+console_error_panic_hook = "0.1"
+ab_glyph = "0.2"
+# Pure Rust EXIF parser. image::load_from_memory does not apply the Orientation tag and
+# to_rgba8 discards it, so without this a portrait photo is stamped sideways.
+kamadak-exif = "0.6"
 
-[dependencies.web-sys]
-version = "0.3.105"
-features = [
-  "console",
-  "File",
-  "FileReader",
-  "Blob",
+# The wasm-opt that wasm-pack 0.13 downloads is Binaryen 117, which validates against an
+# older default feature set than rustc 1.91 emits. Passing an explicit flag list replaces
+# wasm-pack's defaults, so every feature the toolchain actually uses has to be named here or
+# the build dies with "error validating input". simd128 comes from .cargo/config.toml; the
+# rest are what rustc emits for wasm32-unknown-unknown as standard.
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = [
+  '-O3',
+  '--enable-simd',
+  '--enable-bulk-memory',
+  '--enable-sign-ext',
+  '--enable-mutable-globals',
+  '--enable-nontrapping-float-to-int',
+  '--enable-reference-types',
+  '--enable-multivalue',
 ]
+
+[profile.release]
+# Measured on this crate for wasm32-unknown-unknown, after imageproc was removed:
+#   opt-level = "z"  1 178 883 B
+#   opt-level = "s"  1 170 412 B
+#   opt-level = 3    1 164 730 B   <- smallest AND fastest
+# The size-oriented levels only pay off when there is a lot of code to shrink; with 39
+# crates instead of 149 there is not, so 3 wins on both axes. It costs roughly twice the
+# build time, which is the only reason to reconsider.
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true

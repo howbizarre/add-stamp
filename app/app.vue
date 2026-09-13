@@ -1,5 +1,5 @@
 <script lang='ts' setup>
-import type { StampingProgress } from '~/composables/useImageStamping';
+import type { StampingOptions, StampingProgress } from '~/composables/useImageStamping';
 import { useImageStamping } from '~/composables/useImageStamping';
 
 const selectedImages = ref<File[]>([]);
@@ -45,6 +45,22 @@ const handleOpacityChanged = (opacity: number) => {
   stampOpacity.value = opacity;
 };
 
+/**
+ * One option set for the whole run, shared by setStamp and applyStampToImages so the stamp
+ * is decoded under the same limits as the photos.
+ *
+ * Only the fields the UI actually drives are listed. Everything else — padding, the size
+ * budget, the caption size and colour, the resize filter threshold — keeps the default
+ * compiled into the WASM crate, and can be surfaced here as the UI grows without any change
+ * on the Rust side.
+ */
+const stampingOptions = computed<StampingOptions>(() => ({
+  format: 'jpg',
+  quality: 75,
+  opacity: stampOpacity.value,
+  addFilename: addFilenameToWatermark.value
+}));
+
 const canAddStamp = computed(() => {
   return selectedImages.value.length > 0 && selectedPngImage.value !== null && !isStamping.value && !isStampingComplete.value;
 });
@@ -77,17 +93,11 @@ const addStampToImages = async () => {
     if (!selectedPngImage.value) {
       throw new Error('No stamp image selected');
     }
-    await setStamp(selectedPngImage.value);
+    await setStamp(selectedPngImage.value, stampingOptions.value);
 
-    // Apply stamp to all images with JPG format, 75% quality and custom opacity
     const results = await applyStampToImages(
       selectedImages.value,
-      {
-        format: 'jpg',
-        quality: 75,
-        opacity: stampOpacity.value,
-        addFilename: addFilenameToWatermark.value
-      }, // JPG format with custom opacity
+      stampingOptions.value,
       (progress: StampingProgress) => {
         stampingProgress.value = progress;
       }

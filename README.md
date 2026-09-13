@@ -106,23 +106,24 @@ bun install
 The application uses a Rust/WASM module for image processing. You need to build it first:
 
 ```bash
-# Build the WASM module (builds and copies files automatically)
+# Build the WASM module (compiles and publishes the artifact automatically)
 npm run build:wasm
 
-# Alternative: build and copy separately
-cd wasm
-wasm-pack build --target web --out-dir pkg --out-name image_stamper
-cd ..
+# Republish an existing wasm/pkg/ without recompiling
 npm run copy:wasm
 ```
 
 ### 4. Verify WASM Files
 
-Make sure the following files exist in `public/wasm/`:
+The build publishes to a version-stamped directory, so make sure these exist in
+`public/wasm/v<version>/`, where `<version>` is the `version` field of `package.json`:
+
 - `image_stamper.js`
 - `image_stamper_bg.wasm`
-- `image_stamper.d.ts`
-- `image_stamper_bg.wasm.d.ts`
+
+The build script fails loudly if either is missing or empty, so a successful
+`npm run build:wasm` is itself the check. See [README-WASM.md](README-WASM.md) for why the
+directory is versioned and when to bump it.
 
 ## Development Server
 
@@ -166,10 +167,14 @@ The application will be available at [http://localhost:5654](http://localhost:56
 - **Input Formats**: JPG, PNG, WebP, and other common image formats
 - **Output Formats**: JPG (default) or WebP
 - **Watermark**: PNG images with transparency support
-- **Opacity Control**: Adjustable stamp opacity from 1% to 100% (default: 75%)
-- **Text Rendering**: Custom Ubuntu-M.ttf font with adaptive sizing
-- **Color Customization**: Text watermarks use #7d7d7d color with 50% opacity
-- **Quality Control**: Configurable compression quality (default: 75%)
+- **Opacity Control**: Adjustable stamp opacity from 0% to 100% (default: 50%)
+- **Text Rendering**: Embedded Ubuntu-M subset with Cyrillic coverage and real kerning
+- **Color Customization**: Text watermarks default to #7d7d7d at 50% opacity, and every
+  colour, size and margin is a settable option
+- **Quality Control**: Configurable compression quality (default: 75%, JPEG only)
+- **EXIF Orientation**: Portrait frames are uprighted before stamping
+- **Size Limits**: Oversized images are refused from their header, so one bad file cannot
+  take down the rest of the batch
 - **Batch Processing**: Process multiple images at once
 - **Directory Saving**: Save all processed images to a specific folder
 
@@ -203,13 +208,18 @@ Changes to files in the `app/` directory will be automatically reloaded by the d
 
 The application provides several advanced watermarking options:
 
-- **Image Watermark Scaling**: Uses "contain" behavior to fit stamps within images with 10px padding
-- **Stamp Opacity Control**: Adjustable transparency from 1% to 100% (default: 75%)
-- **Text Watermark Font**: Custom Ubuntu-M.ttf font for professional appearance  
-- **Adaptive Font Sizing**: Font size automatically calculates as 4% of the minimum image dimension (min: 16px, max: 48px)
-- **Text Opacity**: 50% transparency for subtle text watermarks
-- **Text Color**: #7d7d7d (medium gray) for optimal contrast
-- **Positioning**: Smart placement to avoid overlapping with existing content
+Every one of these is a field of `StampOptions` with a default, not a hard-coded constant.
+The full table is in [README-WASM.md](README-WASM.md#options).
+
+- **Image Watermark Scaling**: "contain" behaviour, fitting the stamp within the image with
+  10px padding by default (`stampPadding`)
+- **Stamp Opacity Control**: Adjustable transparency from 0% to 100% (default: 50%)
+- **Text Watermark Font**: Embedded Ubuntu-M subset, so the caption renders identically
+  whatever fonts the client has
+- **Adaptive Font Sizing**: 2.2% of the frame's shorter side, clamped to 16-96px
+  (`textSizeRatio`, `textSizeMin`, `textSizeMax`)
+- **Text Colour**: #7d7d7d at 50% by default (`textColor`), alpha honoured
+- **Positioning**: Centred along the bottom edge, with a margin proportional to the caption
 
 ### Customizing Stamp Opacity
 
@@ -225,21 +235,27 @@ The stamp opacity can be adjusted in real-time:
 
 To use a different font for text watermarks:
 
-1. Add your TTF font file to the `wasm/` directory
-2. Update the font loading in `wasm/src/lib.rs`:
+1. Add your TTF file to `wasm/src/`
+2. Point `FONT_DATA` in `wasm/src/lib.rs` at it:
    ```rust
-   let font_data = include_bytes!("../YourFont.ttf");
+   static FONT_DATA: &[u8] = include_bytes!("./YourFont.ttf");
    ```
 3. Rebuild the WASM module: `npm run build:wasm`
+
+Font data is incompressible and dominates the binary, so subset it to the characters your
+filenames actually use — the doc comment on `FONT_DATA` carries the `pyftsubset` command used
+for the shipped font, including the `--legacy-kern` flag that keeps kerning working.
 
 ### Performance Optimization
 
 - **WASM Processing**: Near-native performance for image operations using Rust
 - **Batch Processing**: Reduces overhead for multiple images with progress tracking
 - **Adaptive Font Sizing**: Ensures consistent rendering across different image sizes
-- **Real-time Opacity Control**: Instant feedback without reprocessing
-- **Memory-efficient Handling**: Optimized for large files and batch operations
-- **Smart Caching**: WASM module loads once and reuses for all operations
+- **Scaled-stamp Cache**: Frames of the same size reuse one resized stamp, so the resize runs
+  once per batch instead of once per photo
+- **Memory-efficient Handling**: JPEG encoding builds RGB directly rather than allocating a
+  full RGBA copy first
+- **Smart Caching**: WASM module loads once and is reused for all operations
 
 ## Available Scripts
 
@@ -356,21 +372,19 @@ If you encounter issues building the WASM module:
 
 If text watermarks are not appearing correctly:
 
-1. **Verify font file exists:**
-   - Check that `Ubuntu-M.ttf` is present in the `wasm/` directory
-   - Ensure the font file is not corrupted
+1. **Verify the font file exists:**
+   - Check that `Ubuntu-M-subset.ttf` is present in `wasm/src/`
+   - A corrupt or missing font fails the build, not the run: it is embedded at compile time
 
-2. **Font loading errors:**
-   ```bash
-   # Check WASM build output for font-related errors
-   cd wasm
-   wasm-pack build --target web --out-dir pkg --out-name image_stamper
-   ```
+2. **Characters render as empty boxes:**
+   - The embedded font is a subset. A character outside Latin-1, Latin Extended-A/B or
+     Cyrillic has no glyph and renders as `.notdef`
+   - Widen the ranges and regenerate — see the `FONT_DATA` doc comment in `wasm/src/lib.rs`
 
 3. **Text not visible:**
-   - Verify image dimensions are sufficient (minimum 16px font size)
-   - Check that text color contrasts with image background
-   - Ensure opacity settings are correct (50% transparency)
+   - Check that the caption colour contrasts with the image background (`textColor`)
+   - A fully transparent `textColor` draws nothing at all
+   - `npm test` covers the subset's alphabet coverage and the alpha handling
 
 ### Opacity and Transparency Issues
 
@@ -379,17 +393,17 @@ If stamp opacity is not working as expected:
 1. **Opacity not applying:**
    - Verify the WASM module is properly compiled with the latest changes
    - Check browser console for JavaScript errors
-   - Ensure opacity value is between 1-100
+   - Ensure the opacity value is between 0 and 100
 
 2. **Stamp too transparent or too opaque:**
-   - Adjust the opacity slider (1-100%)
-   - Remember: 1% = nearly invisible, 100% = fully opaque
-   - Default 75% provides good balance for most images
+   - Adjust the opacity slider (0-100%)
+   - Remember: 0% = invisible, 100% = fully opaque
+   - The default 50% provides a good balance for most images
 
 3. **WASM method errors:**
-   - If you see "apply_stamp_with_options_text_and_opacity is not a function"
-   - Rebuild WASM module: `npm run build:wasm`
-   - Clear browser cache and reload the page
+   - If you see "applyStamp is not a function", the browser is running a stale artifact
+   - Rebuild: `npm run build:wasm`, then clear the browser cache and reload
+   - Check that `version` in `package.json` matches the directory under `public/wasm/`
 
 ### Image Processing Issues
 
@@ -444,14 +458,23 @@ add-stamp/
 │   ├── composables/         # Composable functions
 │   │   └── useImageStamping.ts
 │   └── app.vue             # Main application component
-├── wasm/                   # Rust/WASM source code
+├── wasm/                   # Rust/WASM source code — see README-WASM.md
 │   ├── src/
-│   │   └── lib.rs          # Image processing logic with text rendering
-│   ├── Ubuntu-M.ttf        # Custom font for text watermarks
-│   ├── Cargo.toml          # Rust dependencies (image, imageproc, rusttype)
+│   │   ├── lib.rs          # Options, pipeline, encoding, size limits
+│   │   ├── blend.rs        # Alpha compositing
+│   │   ├── error.rs        # StampError, converted to JsError at the boundary
+│   │   ├── layout.rs       # Pure geometry: contain-scale, centring
+│   │   ├── orientation.rs  # EXIF orientation
+│   │   ├── text.rs         # Glyph rasterization
+│   │   └── Ubuntu-M-subset.ttf
+│   ├── tests/              # End-to-end pipeline tests
+│   ├── examples/bench.rs   # Hot-path timings
+│   ├── Cargo.toml          # Rust dependencies (image, ab_glyph, kamadak-exif)
 │   └── pkg/                # Generated WASM files
+├── scripts/
+│   └── build-wasm.mjs      # Builds the crate and publishes the artifact
 ├── public/
-│   └── wasm/               # Deployed WASM files
+│   └── wasm/v<version>/    # Deployed WASM files
 └── package.json            # Node.js dependencies and scripts
 ```
 
@@ -459,9 +482,9 @@ add-stamp/
 
 - **Frontend**: Nuxt 4, Vue 3, TypeScript, Tailwind CSS
 - **Image Processing**: Rust, WebAssembly (WASM)
-- **Text Rendering**: rusttype crate with TrueType font support
-- **Image Libraries**: image crate, imageproc for advanced operations
-- **Font Assets**: Custom Ubuntu-M.ttf font with adaptive sizing
+- **Text Rendering**: ab_glyph, with per-glyph advances and kerning
+- **Image Libraries**: image crate (png, jpeg, webp only), kamadak-exif for orientation
+- **Font Assets**: Embedded Ubuntu-M subset with adaptive sizing
 - **Build Tools**: Vite, wasm-pack
 - **File Handling**: File System Access API with download fallback
 
@@ -470,7 +493,7 @@ add-stamp/
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature/your-feature`
 3. Make your changes
-4. Build and test: `npm run build:wasm && npm run dev`
+4. Build and test: `npm test && npm run build:wasm && npm run dev`
 5. Commit your changes: `git commit -m 'Add your feature'`
 6. Push to the branch: `git push origin feature/your-feature`
 7. Submit a pull request
@@ -481,7 +504,8 @@ This project is licensed under the MIT License. See the [LICENSE.md](LICENSE.md)
 
 ### Third-Party Components
 
-- **Ubuntu-M.ttf Font**: Licensed under Ubuntu Font License (UFL)
+- **Ubuntu Font**: Licensed under the Ubuntu Font Licence — see
+  [wasm/src/FONT-LICENSE.md](wasm/src/FONT-LICENSE.md)
 - **Rust Dependencies**: Various licenses (MIT/Apache-2.0) - see Cargo.toml
 - **JavaScript Dependencies**: Various licenses - see package.json
 

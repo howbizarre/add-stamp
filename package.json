@@ -38,16 +38,18 @@
   "type": "module",
   "scripts": {
     "build": "npm run build:wasm && nuxt build",
-    "build:wasm": "cd wasm && wasm-pack build --target web --out-dir pkg --out-name image_stamper && cd .. && npm run copy:wasm",
-    "copy:wasm": "node -e \"const fs=require('fs'),path=require('path');const src='wasm/pkg',dest='public/wasm';if(!fs.existsSync(dest))fs.mkdirSync(dest,{recursive:true});fs.readdirSync(src).forEach(f=>fs.copyFileSync(path.join(src,f),path.join(dest,f)));\"",
+    "build:wasm": "node scripts/build-wasm.mjs",
+    "copy:wasm": "node scripts/build-wasm.mjs --copy",
     "dev": "nuxt dev --port 5654",
     "dev:wasm": "npm run build:wasm && npm run dev",
+    "test": "cd wasm && cargo test",
+    "bench:wasm": "cd wasm && cargo run --release --example bench",
     "generate": "nuxt generate",
     "preview": "npm run build && wrangler dev",
     "postinstall": "nuxt prepare",
     "deploy": "npm run build && wrangler deploy",
     "cf-typegen": "wrangler types",
-    "clean:wasm": "node -e \"const fs=require('fs'),path=require('path');const rmrf=p=>{if(fs.existsSync(p)){if(fs.lstatSync(p).isDirectory()){fs.readdirSync(p).forEach(f=>rmrf(path.join(p,f)));fs.rmdirSync(p)}else{fs.unlinkSync(p)}}};rmrf('wasm/pkg');['js','wasm','d.ts'].forEach(ext=>fs.readdirSync('public/wasm').filter(f=>f.endsWith('.'+ext)).forEach(f=>fs.unlinkSync(path.join('public/wasm',f))));\""
+    "clean:wasm": "node scripts/build-wasm.mjs --clean"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.18",

@@ -1,0 +1,7 @@
+[target.wasm32-unknown-unknown]
+# 128-bit SIMD is baseline in every browser this app supports (Chrome 91+, Firefox 89+,
+# Safari 16.4+). Enabling it lets LLVM auto-vectorize the blending and flattening loops.
+#
+# Deliberately not hand-written intrinsics: those require `unsafe`, and this crate decodes
+# untrusted image data, so staying entirely safe is worth more than the last few percent.
+rustflags = ["-C", "target-feature=+simd128"]
