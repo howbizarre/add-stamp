@@ -197,6 +197,16 @@ The `wasm-opt` flag list in `Cargo.toml` is not optional. `wasm-pack` 0.13 downl
 explicit list replaces wasm-pack's defaults, so every feature the toolchain actually uses has
 to be named there or the build fails with "error validating input".
 
+## Performance
+
+Per-photo cost on a 24 MP frame, measured inside the wasm artifact: decoding is ~31%, JPEG
+encoding ~63%, blending ~9%, and the stamp resize approximately zero because it is cached per
+batch.
+
+[docs/PERFORMANCE.md](docs/PERFORMANCE.md) records the measurements, the method (native
+benchmarks mislead here), and one open decision — swapping the JPEG encoder, which is worth
+14-30% of total time depending on chroma subsampling. Deferred to the UI rework.
+
 ## Troubleshooting
 
 **`wasm-pack: command not found`** — `cargo install wasm-pack`.
