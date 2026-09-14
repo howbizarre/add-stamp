@@ -1,5 +1,497 @@
 @import "tailwindcss";
 
-button {
-    @apply cursor-pointer px-3 pt-1.5 pb-2 text-xs font-medium rounded transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2;
+/* Dark mode is class-based: <html class="dark">. Photographers judge frames against a dark
+   surround, so the studio follows the OS and remembers an explicit pick. The class is set by
+   an inline script in nuxt.config.ts, before first paint. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ============================================================================
+   Passepartout — the chrome is the mat, the photo is the print.
+   ============================================================================ */
+@theme {
+  --color-paper: #f2ebe0;
+  --color-surface: #fdfbf8;
+  --color-surface-2: #f6f0e7;
+  --color-ink: #232a31;
+  --color-ink-2: #5b656f;
+  --color-ink-3: #8d959d;
+  --color-line: #e2d8c9;
+
+  --color-coral: #ee6f52;
+  --color-coral-ink: #a83f26;
+  --color-coral-soft: #fbdbd0;
+  --color-teal: #3e9a9c;
+  --color-teal-ink: #256a6c;
+  --color-teal-soft: #d2e7e5;
+  --color-sage: #b9c685;
+
+  /* Hue-free by design. A warm surround shifts how the eye reads white balance, so every
+     frame in the app sits on this, never on --color-paper. */
+  --color-mount: #d8d8d8;
+  --color-mount-line: #c2c2c2;
+
+  --color-ok: #3d8f5c;
+  --color-warn: #b8801d;
+  --color-crit: #c2432c;
+
+  --radius-card: 20px;
+  --radius-panel: 28px;
+
+  --shadow-e1: 0 1px 2px rgb(53 42 30 / 0.05), 0 2px 6px rgb(53 42 30 / 0.04);
+  --shadow-e2: 0 2px 4px rgb(53 42 30 / 0.05), 0 10px 24px -6px rgb(53 42 30 / 0.1);
+  --shadow-e3: 0 4px 8px rgb(53 42 30 / 0.06), 0 24px 48px -12px rgb(53 42 30 / 0.16);
+
+  --font-sans: "Figtree", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", monospace;
+
+  --ease-soft: cubic-bezier(0.22, 0.7, 0.3, 1);
+}
+
+/* Unlayered, so it beats the theme layer regardless of specificity. Only the token values
+   change between themes — no component below knows which theme it is in. */
+.dark {
+  --color-paper: #15171a;
+  --color-surface: #1d2126;
+  --color-surface-2: #252a31;
+  --color-ink: #eceae5;
+  --color-ink-2: #a7afb7;
+  --color-ink-3: #727b84;
+  --color-line: #2f353c;
+
+  --color-coral: #ff8468;
+  --color-coral-ink: #ffb6a3;
+  --color-coral-soft: #3f231c;
+  --color-teal: #5fbdbe;
+  --color-teal-ink: #9bdcdc;
+  --color-teal-soft: #15332f;
+  --color-sage: #a5b56f;
+
+  --color-mount: #1b1b1b;
+  --color-mount-line: #2c2c2c;
+
+  --color-ok: #57b47a;
+  --color-warn: #d3a23f;
+  --color-crit: #e26a52;
+
+  --shadow-e1: 0 1px 2px rgb(0 0 0 / 0.4), 0 2px 6px rgb(0 0 0 / 0.3);
+  --shadow-e2: 0 2px 4px rgb(0 0 0 / 0.4), 0 10px 24px -6px rgb(0 0 0 / 0.5);
+  --shadow-e3: 0 4px 8px rgb(0 0 0 / 0.4), 0 24px 48px -12px rgb(0 0 0 / 0.6);
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-coral);
+    outline-offset: 3px;
+  }
+}
+
+@layer components {
+  /* ---- buttons: one role per variant, one coral on screen -------------- */
+  .btn {
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+    border: 1px solid transparent;
+    border-radius: 9999px;
+    padding: 0.5rem 1.125rem;
+    font-size: 0.84rem;
+    font-weight: 600;
+    line-height: 1.4;
+    transition:
+      background-color 0.16s var(--ease-soft),
+      border-color 0.16s var(--ease-soft),
+      color 0.16s var(--ease-soft),
+      filter 0.16s var(--ease-soft),
+      transform 0.16s var(--ease-soft);
+  }
+
+  .btn:active {
+    transform: translateY(1px);
+  }
+
+  .btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .btn-lg {
+    padding: 0.8rem 1.75rem;
+    font-size: 0.95rem;
+  }
+
+  .btn-primary {
+    background-color: var(--color-coral);
+    color: #fff;
+    box-shadow: 0 8px 18px -8px color-mix(in srgb, var(--color-coral) 80%, transparent);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    filter: brightness(0.94);
+  }
+
+  .btn-secondary {
+    background-color: var(--color-teal-soft);
+    color: var(--color-teal-ink);
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    filter: brightness(0.96);
+  }
+
+  .btn-quiet {
+    background-color: transparent;
+    color: var(--color-ink-2);
+    border-color: var(--color-line);
+  }
+
+  .btn-quiet:hover:not(:disabled) {
+    color: var(--color-ink);
+    border-color: var(--color-ink-3);
+  }
+
+  .btn-danger {
+    background-color: transparent;
+    color: var(--color-crit);
+    border-color: color-mix(in srgb, var(--color-crit) 35%, transparent);
+  }
+
+  .btn-danger:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--color-crit) 10%, transparent);
+  }
+
+  /* ---- surfaces -------------------------------------------------------- */
+  .panel {
+    display: flex;
+    flex-direction: column;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-panel);
+    box-shadow: var(--shadow-e2);
+    overflow: hidden;
+  }
+
+  .panel-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--color-line);
+  }
+
+  .panel-head h2 {
+    font-size: 1.02rem;
+    font-weight: 700;
+  }
+
+  .panel-body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.25rem;
+  }
+
+  /* The neutral surround every frame sits on. */
+  .mount {
+    background-color: var(--color-mount);
+    border: 1px solid var(--color-mount-line);
+    border-radius: var(--radius-card);
+  }
+
+  /* ---- chips ----------------------------------------------------------- */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    white-space: nowrap;
+    border: 1px solid var(--color-line);
+    border-radius: 9999px;
+    background-color: var(--color-surface-2);
+    color: var(--color-ink-2);
+    padding: 0.3rem 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+  }
+
+  .chip-dot {
+    width: 7px;
+    height: 7px;
+    flex: none;
+    border-radius: 9999px;
+    background-color: currentColor;
+  }
+
+  .chip-ok {
+    background-color: color-mix(in srgb, var(--color-ok) 14%, transparent);
+    border-color: color-mix(in srgb, var(--color-ok) 30%, transparent);
+    color: var(--color-ok);
+  }
+
+  .chip-warn {
+    background-color: color-mix(in srgb, var(--color-warn) 14%, transparent);
+    border-color: color-mix(in srgb, var(--color-warn) 30%, transparent);
+    color: var(--color-warn);
+  }
+
+  .chip-crit {
+    background-color: color-mix(in srgb, var(--color-crit) 14%, transparent);
+    border-color: color-mix(in srgb, var(--color-crit) 30%, transparent);
+    color: var(--color-crit);
+  }
+
+  /* ---- dropzone -------------------------------------------------------- */
+  .dropzone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    border: 2px dashed var(--color-line);
+    border-radius: var(--radius-card);
+    background-color: var(--color-surface-2);
+    padding: 1.875rem 1.25rem;
+    text-align: center;
+    transition:
+      border-color 0.2s var(--ease-soft),
+      background-color 0.2s var(--ease-soft);
+  }
+
+  .dropzone:hover,
+  .dropzone.is-dragover {
+    border-color: var(--color-teal);
+    background-color: color-mix(in srgb, var(--color-teal-soft) 40%, var(--color-surface-2));
+  }
+
+  /* Transparency ground for the stamp preview. Mid grey in both themes, because a stamp is
+     usually white — on the light mat it would disappear, on the dark one it would look
+     opaque. The checks also make the alpha channel legible, which is the point. */
+  .checker {
+    background-color: #9a9a9a;
+    background-image:
+      linear-gradient(45deg, #7d7d7d 25%, transparent 25%, transparent 75%, #7d7d7d 75%),
+      linear-gradient(45deg, #7d7d7d 25%, transparent 25%, transparent 75%, #7d7d7d 75%);
+    background-size: 16px 16px;
+    background-position: 0 0, 8px 8px;
+  }
+
+  /* ---- key/value row --------------------------------------------------- */
+  .kv {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    color: var(--color-ink-2);
+  }
+
+  .kv > :last-child {
+    color: var(--color-ink);
+    text-align: right;
+  }
+
+  /* ---- progress -------------------------------------------------------- */
+  .bar {
+    height: 8px;
+    overflow: hidden;
+    border: 1px solid var(--color-line);
+    border-radius: 9999px;
+    background-color: var(--color-surface-2);
+  }
+
+  .bar > span {
+    display: block;
+    height: 100%;
+    background-image: linear-gradient(90deg, var(--color-teal), var(--color-coral));
+    transition: width 0.3s var(--ease-soft);
+  }
+
+  /* ---- switch ---------------------------------------------------------- */
+  .switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    cursor: pointer;
+    font-size: 0.87rem;
+    color: var(--color-ink-2);
+  }
+
+  .switch input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+  }
+
+  .switch-track {
+    position: relative;
+    flex: none;
+    width: 40px;
+    height: 23px;
+    border-radius: 9999px;
+    background-color: var(--color-line);
+    transition: background-color 0.2s var(--ease-soft);
+  }
+
+  .switch-track::after {
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 17px;
+    height: 17px;
+    border-radius: 9999px;
+    background-color: var(--color-surface);
+    box-shadow: var(--shadow-e1);
+    transition: transform 0.2s var(--ease-soft);
+  }
+
+  .switch input:checked + .switch-track {
+    background-color: var(--color-teal);
+  }
+
+  .switch input:checked + .switch-track::after {
+    transform: translateX(17px);
+  }
+
+  .switch input:focus-visible + .switch-track {
+    outline: 2px solid var(--color-coral);
+    outline-offset: 3px;
+  }
+
+  /* ---- range ----------------------------------------------------------- */
+  .range {
+    -webkit-appearance: none;
+    appearance: none;
+    flex: 1;
+    min-width: 6rem;
+    height: 6px;
+    border-radius: 9999px;
+    background-image: linear-gradient(90deg, var(--color-teal), var(--color-coral));
+    cursor: pointer;
+  }
+
+  .range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--color-ink);
+    border-radius: 9999px;
+    background-color: var(--color-surface);
+    box-shadow: var(--shadow-e1);
+    cursor: pointer;
+  }
+
+  .range::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--color-ink);
+    border-radius: 9999px;
+    background-color: var(--color-surface);
+    cursor: pointer;
+  }
+
+  /* ---- text input ------------------------------------------------------ */
+  .field {
+    border: 1px solid var(--color-line);
+    border-radius: 10px;
+    background-color: var(--color-surface);
+    color: var(--color-ink);
+    padding: 0.35rem 0.55rem;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+  }
+
+  /* ---- eyebrow --------------------------------------------------------- */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--color-ink-3);
+  }
+}
+
+@layer utilities {
+  /* The organic ground from the references. Fixed and behind everything, so it never
+     repaints while the gallery scrolls. */
+  .blobs {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .blobs > i {
+    position: absolute;
+    display: block;
+    border-radius: 9999px;
+    filter: blur(80px);
+    opacity: 0.45;
+  }
+
+  .blobs > i:nth-child(1) {
+    width: 48vw;
+    height: 48vw;
+    left: -14vw;
+    top: -12vw;
+    background-color: var(--color-teal-soft);
+  }
+
+  .blobs > i:nth-child(2) {
+    width: 40vw;
+    height: 40vw;
+    right: -10vw;
+    top: 20vw;
+    background-color: var(--color-coral-soft);
+  }
+
+  .blobs > i:nth-child(3) {
+    width: 44vw;
+    height: 44vw;
+    left: 30vw;
+    bottom: -22vw;
+    background-color: color-mix(in srgb, var(--color-sage) 42%, transparent);
+  }
+
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

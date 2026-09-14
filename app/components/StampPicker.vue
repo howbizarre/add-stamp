@@ -1,92 +1,3 @@
-<template>
-  <div class="mx-auto">
-    <div class="flex justify-between items-center mb-2">
-      <template v-if="!selectedImage">
-        <label for="png-upload" class="block text-sm font-medium text-gray-700">
-          Select a PNG image
-        </label>
-      </template>
-
-      <template v-if="selectedImage">
-        <div class="flex justify-between items-center w-full">
-          <button @click="resetImage"
-                  class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm focus:ring-red-500">
-            Remove Stamp
-          </button>
-          <strong class="text-sm text-gray-600">{{ selectedImage.name }}</strong>
-          <div class="flex items-center gap-2">
-            <div class="flex items-center gap-1">
-              <label for="stamp-opacity" class="text-sm text-gray-600">Opacity:</label>
-              <input
-                     id="stamp-opacity"
-                     v-model="stampOpacity"
-                     type="number"
-                     min="1"
-                     max="100"
-                     class="w-16 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
-              <span class="text-sm text-gray-600">%</span>
-            </div>
-          </div>
-        </div>
-      </template>
-    </div>
-
-    <!-- Upload Area or Image Preview -->
-    <div @drop="handleDrop"
-         @dragover="handleDragOver"
-         @dragenter="handleDragEnter"
-         @dragleave="handleDragLeave"
-         :class="{ 'border-indigo-500 bg-indigo-50': isDragOver }"
-         class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md transition-colors cursor-pointer hover:border-indigo-400">
-
-      <!-- Upload content (shows only when no image is selected) -->
-      <div v-if="!selectedImage" class="space-y-1 text-center">
-        <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
-          <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
-
-        <div class="flex text-sm text-gray-600">
-          <label for="png-upload" class="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
-            <span>Add Stamp file</span>
-            <input id="png-upload"
-                   name="png-upload"
-                   type="file"
-                   class="sr-only"
-                   @change="handleFileChange"
-                   accept=".png">
-          </label>
-
-          <p class="pl-1">or drag and drop it here</p>
-        </div>
-
-        <p class="text-xs text-gray-500">PNG file only, up to 1MB</p>
-      </div>
-
-      <!-- Image Preview (shows only when an image is selected) -->
-      <div v-if="selectedImage && imagePreviewUrl" class="relative group flex items-center justify-center w-full h-full p-2">
-        <img :src="imagePreviewUrl"
-             :alt="selectedImage.name"
-             class="max-h-20 max-w-full object-contain rounded shadow-md" />
-
-        <div class="absolute bottom-1 left-1 right-1 bg-black bg-opacity-75 text-white text-xs p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded">
-          <div class="flex justify-between items-center">
-            <span class="truncate">{{ selectedImage.name }}</span>
-            <span class="ml-2">{{ formatFileSize(selectedImage.size) }}</span>
-          </div>
-          <div v-if="imageMetadata" class="text-xs mt-1 text-gray-300">
-            {{ imageMetadata.width }}x{{ imageMetadata.height }} px
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Error Message -->
-    <div v-if="errorMessage" class="mt-3 p-3 bg-red-50 border border-red-200 rounded-md">
-      <p class="text-sm text-red-600">{{ errorMessage }}</p>
-    </div>
-  </div>
-</template>
-
 <script lang='ts' setup>
 interface Props {
   selectedImage?: File | null;
@@ -105,30 +16,36 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits(['image-selected', 'image-reset', 'opacity-changed']);
 
+/** Mirrors the check in validatePngFile below — one number, shown and enforced. */
+const MAX_STAMP_BYTES = 10 * 1024 * 1024;
+
 const isDragOver = ref(false);
 const imagePreviewUrl = ref<string | null>(null);
 const imageMetadata = ref<ImageMetadata | null>(null);
 const errorMessage = ref<string>('');
-const stampOpacity = ref(props.opacity);
 
-// Watch for changes in the selected image
+/**
+ * The parent owns the value; this is only a conduit, so there is no second copy to drift.
+ */
+const opacity = computed({
+  get: () => props.opacity,
+  set: (value: number) => emit('opacity-changed', value)
+});
+
 watch(
   () => props.selectedImage,
   async (newImage) => {
-    // Clear the previous URL
     if (imagePreviewUrl.value) {
       URL.revokeObjectURL(imagePreviewUrl.value);
       imagePreviewUrl.value = null;
     }
-    
+
     imageMetadata.value = null;
     errorMessage.value = '';
 
     if (newImage) {
-      // Create new preview URL
       imagePreviewUrl.value = URL.createObjectURL(newImage);
-      
-      // Get image metadata
+
       try {
         imageMetadata.value = await getImageMetadata(newImage);
       } catch (error) {
@@ -139,17 +56,6 @@ watch(
   { immediate: true }
 );
 
-// Watch for opacity changes
-watch(stampOpacity, (newOpacity) => {
-  emit('opacity-changed', newOpacity);
-});
-
-// Watch for props opacity changes
-watch(() => props.opacity, (newOpacity) => {
-  stampOpacity.value = newOpacity;
-});
-
-// Cleanup on unmount
 onUnmounted(() => {
   if (imagePreviewUrl.value) {
     URL.revokeObjectURL(imagePreviewUrl.value);
@@ -162,22 +68,18 @@ const resetImage = () => {
 };
 
 const validatePngFile = (file: File): boolean => {
-  // Check file extension
   if (!file.name.toLowerCase().endsWith('.png')) {
-    errorMessage.value = 'Please select a PNG file.';
+    errorMessage.value = `${file.name} is not a PNG. Export the stamp as PNG so its transparency survives.`;
     return false;
   }
 
-  // Check MIME type
   if (file.type !== 'image/png') {
-    errorMessage.value = 'The file is not a valid PNG format.';
+    errorMessage.value = `${file.name} has a .png name but is not PNG data. Re-export it from your editor.`;
     return false;
   }
 
-  // Check file size (10MB)
-  const maxSize = 10 * 1024 * 1024; // 10MB
-  if (file.size > maxSize) {
-    errorMessage.value = 'File is too large. Maximum size is 10MB.';
+  if (file.size > MAX_STAMP_BYTES) {
+    errorMessage.value = `${formatFileSize(file.size)} is over the ${formatFileSize(MAX_STAMP_BYTES)} limit. Scale the stamp down — it is resized to the frame anyway.`;
     return false;
   }
 
@@ -186,16 +88,16 @@ const validatePngFile = (file: File): boolean => {
 
 const handleFileChange = (event: Event) => {
   const target = event.target as HTMLInputElement;
-  
+
   if (target.files && target.files.length > 0) {
     const file = target.files[0];
-    
+
     if (file && validatePngFile(file)) {
       errorMessage.value = '';
       emit('image-selected', file);
     }
   }
-  
+
   // Clear the input to allow selecting the same file again
   target.value = '';
 };
@@ -205,9 +107,10 @@ const handleDrop = (event: DragEvent) => {
   isDragOver.value = false;
 
   const files = event.dataTransfer?.files;
+
   if (files && files.length > 0) {
     const file = files[0];
-    
+
     if (file && validatePngFile(file)) {
       errorMessage.value = '';
       emit('image-selected', file);
@@ -215,9 +118,7 @@ const handleDrop = (event: DragEvent) => {
   }
 };
 
-const handleDragOver = (event: DragEvent) => {
-  event.preventDefault();
-};
+const handleDragOver = (event: DragEvent) => { event.preventDefault(); };
 
 const handleDragEnter = (event: DragEvent) => {
   event.preventDefault();
@@ -240,10 +141,7 @@ const getImageMetadata = (file: File): Promise<ImageMetadata> => {
 
     img.onload = () => {
       URL.revokeObjectURL(url);
-      resolve({
-        width: img.naturalWidth,
-        height: img.naturalHeight
-      });
+      resolve({ width: img.naturalWidth, height: img.naturalHeight });
     };
 
     img.onerror = () => {
@@ -254,14 +152,82 @@ const getImageMetadata = (file: File): Promise<ImageMetadata> => {
     img.src = url;
   });
 };
-
-const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) return '0 Bytes';
-  
-  const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-};
 </script>
+
+<template>
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Stamp</h2>
+
+      <div class="flex min-w-0 flex-wrap items-center gap-2">
+        <span v-if="selectedImage" class="chip max-w-52">
+          <span class="truncate">{{ selectedImage.name }}</span>
+        </span>
+        <button v-if="selectedImage"
+                type="button"
+                class="btn btn-danger"
+                @click="resetImage">
+          Remove
+        </button>
+      </div>
+    </div>
+
+    <div class="panel-body">
+      <input id="png-upload"
+             name="png-upload"
+             type="file"
+             class="sr-only"
+             accept=".png,image/png"
+             @change="handleFileChange">
+
+      <label v-if="!selectedImage"
+             for="png-upload"
+             class="dropzone cursor-pointer"
+             :class="{ 'is-dragover': isDragOver }"
+             @drop="handleDrop"
+             @dragover="handleDragOver"
+             @dragenter="handleDragEnter"
+             @dragleave="handleDragLeave">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" class="text-ink-3" aria-hidden="true">
+          <path d="M12 3v9" />
+          <path d="M8.5 8.5 12 12l3.5-3.5" />
+          <rect x="3" y="14" width="18" height="7" rx="2.5" />
+        </svg>
+
+        <p class="text-sm text-ink-2">
+          Drop your stamp or <span class="font-semibold text-teal-ink">pick a PNG</span>
+        </p>
+        <p class="font-mono text-xs text-ink-3">png with transparency · up to {{ formatFileSize(MAX_STAMP_BYTES) }}</p>
+      </label>
+
+      <template v-else>
+        <!-- Checkerboard, not the mat: a white stamp on a light surround is invisible, and
+             the alpha channel is the thing worth seeing here. -->
+        <div class="checker grid min-h-32 place-items-center rounded-card border border-mount-line p-4">
+          <img v-if="imagePreviewUrl"
+               :src="imagePreviewUrl"
+               :alt="selectedImage.name"
+               class="max-h-24 max-w-full object-contain"
+               :style="{ opacity: Math.max(opacity, 5) / 100 }">
+        </div>
+
+        <OpacityPresets v-model="opacity" />
+
+        <div class="mt-auto flex flex-col gap-1.5">
+          <p v-if="imageMetadata" class="kv">
+            <span>Size</span>
+            <span class="tnum">{{ imageMetadata.width }}&times;{{ imageMetadata.height }} · {{ formatFileSize(selectedImage.size) }}</span>
+          </p>
+          <p class="kv">
+            <span>Position</span>
+            <span>bottom right · contained with padding</span>
+          </p>
+        </div>
+      </template>
+
+      <p v-if="errorMessage" class="rounded-card border border-crit/25 bg-crit/8 p-3 text-sm text-crit">
+        {{ errorMessage }}
+      </p>
+    </div>
+  </section>
+</template>
