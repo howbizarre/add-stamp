@@ -1,6 +1,6 @@
 {
   "name": "add-stamp",
-  "version": "1.0.5",
+  "version": "2.1.2",
   "description": "A Nuxt 4 application for applying watermarks to images using WebAssembly (WASM) for high-performance image processing",
   "keywords": [
     "nuxt4",
