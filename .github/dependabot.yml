@@ -1,6 +1,9 @@
-# To get started with Dependabot version updates, you'll need to specify which
-# package ecosystems to update and where the package manifests are located.
-# Please see the documentation for all configuration options:
+# Dependabot version updates are currently switched OFF in the repository settings, so
+# nothing here runs — the weekly schedule below describes what would happen if they were
+# turned back on, not what is happening now. The config is kept rather than deleted for
+# exactly that reason.
+#
+# All configuration options:
 # https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
 
 version: 2
