@@ -220,7 +220,7 @@ const getImageMetadata = (file: File): Promise<ImageMetadata> => {
           </p>
           <p class="kv">
             <span>Position</span>
-            <span>bottom right · contained with padding</span>
+            <span>centred · contained with padding</span>
           </p>
         </div>
       </template>

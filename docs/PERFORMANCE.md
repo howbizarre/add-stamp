@@ -4,9 +4,10 @@ Measured 2026-09-13 against the crate at its current state, to answer a specific
 is there a dependency we could upgrade for speed or memory?
 
 **The short answer is no.** `image` 0.25.10, `ab_glyph` 0.2.32, `wasm-bindgen` 0.2.128 and
-`kamadak-exif` 0.6.1 are all the latest published versions, and `cargo outdated` is right
-that there is nothing to bump. What follows is what the measurements turned up instead, kept
-here because one of the findings is a decision waiting to be made rather than a fact.
+`kamadak-exif` 0.6.1 — the versions in `Cargo.lock`, unchanged since — were all the latest
+published releases on that date, and `cargo outdated` was right that there was nothing to
+bump. What follows is what the measurements turned up instead, kept here because one of the
+findings is a decision waiting to be made rather than a fact.
 
 ## Method
 
@@ -41,6 +42,10 @@ absolute terms, but the ratios between variants should hold.
 | **encode JPEG q75** | **1605** | **63%** |
 | total | 2541 | |
 
+Each row is the median of its own set of runs, so the stages sum to slightly more than the
+median total and the shares to slightly over 100%. The differences are noise at this scale;
+nothing here turns on the last percent.
+
 Two things follow from this.
 
 **The scaled-stamp cache is doing its job.** A Lanczos3 resize of the stamp costs several
@@ -74,8 +79,10 @@ files 6% smaller while being 2.34x faster.
 
 The wasm artifact grows by about 21 KB (from 955 609 B).
 
-**Status: deferred to the UI rework**, because it changes the bytes of delivered photos and
-the right default belongs with the decision about exposing format and quality in the UI.
+**Status: still open.** It was deferred to the UI rework, because it changes the bytes of
+delivered photos and the right default belongs with the decision about exposing format and
+quality in the interface. That rework shipped in 2.1.x without exposing either — the app
+sends a fixed `jpg` at quality 75 — so the decision is still waiting on the same question.
 
 If it is picked up, two things must come with it:
 

@@ -7,13 +7,16 @@ nothing is uploaded, and originals never leave the device unstamped.
 Decoding untrusted image data is a classic memory-corruption surface, so it happens in
 memory-safe Rust (there is no `unsafe` anywhere in the crate) inside the WebAssembly sandbox.
 
+For the application around it — the interface, the batch flow, deployment — see
+[README.md](README.md).
+
 ## Building
 
 ```bash
 npm run build:wasm     # compile the crate and publish to public/wasm/v<version>/
 npm run copy:wasm      # republish an existing wasm/pkg/ without recompiling
 npm run clean:wasm     # remove wasm/pkg/ and public/wasm/
-npm test               # the Rust test suite (91 tests, native target)
+npm test               # the Rust test suite, native target (70 unit + 21 end-to-end)
 npm run bench:wasm     # time the hot path on a synthetic 24 MP frame
 ```
 
@@ -75,8 +78,10 @@ Underneath, the exported surface is three items:
 | `StampOptions` | Every tunable, constructed with the defaults already in place |
 | `OutputFormat` | `Jpeg` or `WebP` |
 
-`StampOptions` is a WebAssembly-owned object, so it must be released with `.free()` when
-done — the composable builds one per batch and frees it in a `finally`.
+`ImageStamper` and `StampOptions` are both handles into WebAssembly linear memory rather
+than ordinary JavaScript objects, so the collector cannot reclaim them. `StampOptions` is
+built once per batch and released with `.free()` in a `finally`; the `ImageStamper` is kept
+for the life of the page, which is also what keeps the scaled-stamp cache warm.
 
 Errors cross the boundary as real `Error` objects with a usable message and stack, not as
 bare strings.
@@ -93,7 +98,7 @@ numbers, so they cannot drift apart.
 | `quality` | `quality` | `75` | 1-100. JPEG only |
 | `opacity` | `opacity` | `50` | Stamp opacity, 0-100 |
 | `format` | `format` | `'jpg'` | `'jpg'` or `'webp'` |
-| `addFilename` | — | `true` | Whether to draw the filename caption |
+| `addFilename` | — | `true` | Whether to draw the filename caption. TypeScript-side only: it passes an empty `filename` to `applyStamp`, and an empty caption draws nothing |
 | `stampPadding` | `stamp_padding` | `10` | Clear space around the stamp, in source pixels |
 | `maxMegapixels` | `max_megapixels` | `120` | Largest image to decode |
 | `maxDimension` | `max_dimension` | `65535` | Largest single axis to decode |
@@ -108,7 +113,10 @@ numbers, so they cannot drift apart.
 
 Colours cross the boundary as packed `0xRRGGBBAA` integers, because a `#[wasm_bindgen]`
 struct field cannot be a string or an array. The composable takes CSS hex (`#rgb`, `#rgba`,
-`#rrggbb`, `#rrggbbaa`) and packs it for you via the exported `packColor` helper.
+`#rrggbb`, `#rrggbbaa`) and packs it for you; `packColor` is exported from
+`useImageStamping.ts` if you need it directly. It throws on anything that is not valid hex,
+rather than substituting a default — a silently wrong colour would only show up as a wrongly
+tinted watermark on delivered photos.
 
 Values are clamped on entry rather than rejected: an empty number input in a browser reads
 back as `NaN`, and `f32::clamp` panics on a `NaN` bound — which in WebAssembly traps the
@@ -129,8 +137,9 @@ unreachable, including the case where `textSizeMin > textSizeMax`.
 4. **Scale the stamp** to fit inside the frame with `stampPadding` on every side, caching the
    result. Every frame in a batch usually shares dimensions, so this runs once per batch
    rather than once per photo — which is what makes Lanczos3 affordable at all.
-5. **Composite** it at `opacity`, walking the intersection of the two rectangles as row
-   slices and skipping fully transparent overlay pixels.
+5. **Composite** it centred, at `opacity`, walking the intersection of the two rectangles as
+   row slices and skipping fully transparent overlay pixels. Centred and contained is the
+   whole placement model — there is no corner anchor and no tiling.
 6. **Draw the caption** at a size proportional to the frame's shorter side, centred, with
    real per-glyph advances and kerning.
 7. **Encode.** For JPEG, RGB is built directly with translucent pixels composited onto
@@ -201,7 +210,8 @@ to be named there or the build fails with "error validating input".
 
 Per-photo cost on a 24 MP frame, measured inside the wasm artifact: decoding is ~31%, JPEG
 encoding ~63%, blending ~9%, and the stamp resize approximately zero because it is cached per
-batch.
+batch. Each stage is the median of its own run, so the shares add up to a little over 100%
+rather than exactly to it.
 
 [docs/PERFORMANCE.md](docs/PERFORMANCE.md) records the measurements, the method (native
 benchmarks mislead here), and one open decision — swapping the JPEG encoder, which is worth

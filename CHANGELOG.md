@@ -1,8 +1,38 @@
 # Changelog
 
-## [Unreleased] - 2026-09-13
+## [2.1.2] - 2026-09-14
+
+The WASM pipeline was rewritten and the interface rebuilt around it, which is why the version
+jumped from 1.0.5 straight to 2.1.2.
+
+### Added
+
+- **A rebuilt interface.** Both pickers are drop targets as well as buttons; frames arrive as
+  a filmstrip with the batch's total and largest file called out, and the gallery below shows
+  every frame with its dimensions, megapixels and orientation.
+- **Light and dark themes.** Only token values change between them, so no component knows
+  which theme it is in. The class is set by an inline script before first paint — with
+  `ssr: false` the shell is a static `index.html`, so without it the app flashed the light
+  palette on every load for anyone on a dark OS. It follows the OS until someone presses the
+  toggle, then remembers that choice per browser.
+- **Opacity as four presets plus a slider**, each preset filled with the value it stands for,
+  so the row reads as a scale. The stamp preview dims with it, over a checkerboard — a white
+  mark on a light surround is invisible.
+- **A switch for the filename caption**, which used to be unconditional.
+- **Live progress**: a bar, a running count and the name of the file being worked on, then
+  how long the batch took and how large the archive is.
+- **Reset all**, which returns the page to its just-loaded state.
+- **Header chips** naming the loaded WASM version, the output format and quality, and the
+  megapixel ceiling — so a frame the decoder will refuse is explained before it is refused.
+- **Stamp validation with a reason**: not PNG, not PNG data despite the name, or over 10 MB,
+  each said in a sentence rather than as a silent rejection.
+- **91 tests** (`npm test`) covering the pipeline end to end, EXIF transforms, the subset
+  font's alphabet coverage, blending against a naive reference, and option clamping.
+- **`examples/bench.rs`** (`npm run bench:wasm`) for timing the hot path.
+- **The Ubuntu Font Licence notice**, which the project had been shipping without.
 
 ### Fixed
+
 - **EXIF orientation**: portrait frames were stamped sideways. `image` does not apply the
   `Orientation` tag and `to_rgba8` discarded it, so the photo came out rotated with a rotated
   watermark and no EXIF left to correct it. The frame is now uprighted before anything is
@@ -20,8 +50,13 @@
 - **Format validation**: an unsupported output format only failed after the image had been
   decoded, resized, blended and captioned. `OutputFormat` is an enum, so it is rejected at
   the boundary.
+- **Object URLs** behind the previews are revoked when the arrays they came from are emptied,
+  and the frame strip only creates them for the first eight files — the gallery already
+  decodes the rest, and a second full-size copy of each one turned a 120-frame batch into a
+  dead tab.
 
 ### Changed
+
 - **WASM API**: the five `apply_stamp*` overloads are replaced by
   `applyStamp(bytes, filename, options)` and `setStamp(bytes, options)`, with every tunable a
   field of `StampOptions` carrying a default — quality, opacity, format, stamp padding, size
@@ -42,6 +77,7 @@
   empty, which `nuxt build` cannot detect on its own.
 
 ### Performance
+
 - **Binary size 4 481 273 B -> 955 609 B.** Dropping `imageproc` took the dependency graph
   from 154 crates to 41: it depended on `image` with default features, and Cargo unions
   features across the graph, so an AV1 encoder, OpenEXR, TIFF, GIF, QOI, `nalgebra`, `rand`
@@ -57,26 +93,21 @@
 - **JPEG encoding** builds RGB directly from the RGBA buffer rather than allocating a full
   `DynamicImage` copy first.
 
-### Added
-- 91 tests (`npm test`) covering the pipeline end to end, EXIF transforms, the subset font's
-  alphabet coverage, blending equivalence against a naive reference, and option clamping.
-- `examples/bench.rs` (`npm run bench:wasm`) for timing the hot path.
-- The Ubuntu Font Licence notice, which the project had been shipping without.
-## [Previous] - 2025-11-01
+Where the remaining time goes, and the one decision still open, are recorded in
+[docs/PERFORMANCE.md](docs/PERFORMANCE.md).
+
+## [1.0.5] - 2025-11-01
 
 ### Fixed
-- **Firefox Compatibility**: Resolved issue where Firefox would open individual download dialogs for each processed image when saving to disk
-  - Added JSZip library to create a single ZIP archive containing all stamped images
-  - Chrome and other browsers supporting File System Access API continue to use the native directory picker
-  - Firefox and other browsers without File System Access API support now download a single ZIP file instead of triggering multiple download dialogs
+
+- **Firefox compatibility**: Firefox opened a separate download dialog for every processed
+  image. Saving now produces one ZIP archive instead.
 
 ### Changed
-- Modified `downloadStampedImages` method in `useImageStamping.ts` to create ZIP archives instead of individual file downloads
-- ZIP files are named with timestamp: `stamped-images-{timestamp}.zip`
-- All images are organized in a `stamped-images` folder within the ZIP archive
 
-### Technical Details
-- The application now detects browser support for File System Access API
-- **Chrome/Edge**: Uses native directory picker with `showDirectoryPicker()` API
-- **Firefox/Safari**: Falls back to ZIP download method
-- ZIP compression level set to 6 (balanced between speed and file size)
+- `downloadStampedImages` in `useImageStamping.ts` builds a ZIP rather than downloading files
+  one by one. The archive is named `stamped-images-<timestamp>.zip` and holds the images in a
+  `stamped-images/` folder, deflated at level 6.
+- The File System Access API directory picker was taken out of the save flow rather than
+  kept as a Chrome-only branch. Two save paths meant two behaviours to explain and only one
+  of them was ever exercised outside Chrome; every browser now gets the same ZIP.

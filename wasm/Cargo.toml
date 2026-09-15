@@ -1,7 +1,7 @@
 [package]
 name = "image-stamper"
 # Kept in sync with package.json so a deployed .wasm can be traced to a commit.
-version = "1.0.5"
+version = "2.1.2"
 edition = "2024"
 rust-version = "1.91"
 
@@ -43,8 +43,8 @@ wasm-opt = [
 #   opt-level = "z"  1 178 883 B
 #   opt-level = "s"  1 170 412 B
 #   opt-level = 3    1 164 730 B   <- smallest AND fastest
-# The size-oriented levels only pay off when there is a lot of code to shrink; with 39
-# crates instead of 149 there is not, so 3 wins on both axes. It costs roughly twice the
+# The size-oriented levels only pay off when there is a lot of code to shrink; with 41
+# crates instead of 154 there is not, so 3 wins on both axes. It costs roughly twice the
 # build time, which is the only reason to reconsider.
 opt-level = 3
 lto = "fat"

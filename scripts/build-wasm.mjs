@@ -11,8 +11,8 @@
  *      also published wasm-pack's generated package.json and .gitignore, which ended up
  *      served publicly at /wasm/package.json.
  *   2. A missing .wasm is a hard failure. `nuxt build` does not know about the runtime
- *      import() of /wasm/image_stamper.js, so without this check a deploy with an empty
- *      public/wasm/ succeeds and only fails when a user clicks "Apply Stamp".
+ *      import() of /wasm/v<version>/image_stamper.js, so without this check a deploy with an
+ *      empty public/wasm/ succeeds and only fails when a user clicks "Apply stamp".
  *
  * Usage:
  *   node scripts/build-wasm.mjs          build the crate, then publish

@@ -117,7 +117,7 @@ dependencies = [
 
 [[package]]
 name = "image-stamper"
-version = "1.0.5"
+version = "2.1.2"
 dependencies = [
  "ab_glyph",
  "console_error_panic_hook",
