@@ -1,5 +1,24 @@
 # Changelog
 
+## [Unreleased]
+
+### Removed
+
+- **The last of the File System Access API.** `saveStampedImagesToDirectory` and
+  `saveStampedImagesToSpecificDirectory` had been unreachable since the save flow became a
+  ZIP in 1.0.5 — the first only forwarded to the ZIP path, the second still carried the
+  directory-picker code and the only `any` in the file. Nothing called either.
+
+### Changed
+
+- **The documentation was rewritten against the code.** The README still described the
+  directory picker, the old button names, input formats the decoder cannot read, a 50 MB
+  size limit that does not exist, and a screenshot of an interface two rewrites old. The
+  screenshots are regenerated from a real run; `CHANGELOG.md` gained the 2.1.2 interface
+  work, which had never been recorded.
+- **The stamp's position is described correctly.** The stamp picker reported `bottom right`;
+  the mark is contain-scaled and centred, and always has been.
+
 ## [2.1.2] - 2026-09-14
 
 The WASM pipeline was rewritten and the interface rebuilt around it, which is why the version

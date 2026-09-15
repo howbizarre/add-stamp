@@ -301,37 +301,6 @@ export class ImageStampingService {
     return results;
   }
 
-  async saveStampedImagesToDirectory(stampedImages: StampedImage[]): Promise<void> {
-    // Always download as ZIP for all browsers
-    await this.downloadStampedImages(stampedImages);
-  }
-
-  async saveStampedImagesToSpecificDirectory(stampedImages: StampedImage[], directoryHandle: any): Promise<void> {
-    try {
-      // Create stamped-images subdirectory
-      const stampedDirHandle = await directoryHandle.getDirectoryHandle('stamped-images', {
-        create: true
-      });
-
-      // Save each image to the subdirectory
-      for (const { file } of stampedImages) {
-        const fileHandle = await stampedDirHandle.getFileHandle(file.name, {
-          create: true
-        });
-
-        const writable = await fileHandle.createWritable();
-        await writable.write(file);
-        await writable.close();
-      }
-
-      console.log(`Successfully saved ${stampedImages.length} images to stamped-images directory`);
-    } catch (error) {
-      console.error('Error saving to specific directory:', error);
-      // Fallback to downloads
-      await this.downloadStampedImages(stampedImages);
-    }
-  }
-
   async downloadStampedImages(stampedImages: StampedImage[]): Promise<void> {
     try {
       // Create a ZIP archive with all stamped images
@@ -391,9 +360,6 @@ export const useImageStamping = () => {
       options: StampingOptions = {},
       onProgress?: (progress: StampingProgress) => void
     ) => service.applyStampToImages(images, options, onProgress),
-    downloadStampedImages: (stampedImages: StampedImage[]) => service.downloadStampedImages(stampedImages),
-    saveStampedImagesToDirectory: (stampedImages: StampedImage[]) => service.saveStampedImagesToDirectory(stampedImages),
-    saveStampedImagesToSpecificDirectory: (stampedImages: StampedImage[], directoryHandle: any) =>
-      service.saveStampedImagesToSpecificDirectory(stampedImages, directoryHandle)
+    downloadStampedImages: (stampedImages: StampedImage[]) => service.downloadStampedImages(stampedImages)
   };
 };
