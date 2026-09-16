@@ -428,6 +428,26 @@
     font-size: 0.78rem;
   }
 
+  /* ---- footer ---------------------------------------------------------- */
+  /* The hairline above it curls down at both ends instead of running off square — the only
+     ornament the footer gets. `main` takes the slack (`flex: 1` in the page column), so on a
+     page too short to scroll the footer sits on the bottom edge rather than halfway up. */
+  .site-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-block-start: 2.5rem;
+    border-top: 1px solid var(--color-line);
+    border-top-left-radius: var(--radius-panel);
+    border-top-right-radius: var(--radius-panel);
+    /* The bottom pad clears the iPhone home indicator; on everything else it reads as 0. */
+    padding: 1.25rem 1.25rem calc(1.25rem + env(safe-area-inset-bottom, 0px));
+    font-size: 0.875rem;
+    color: var(--color-ink-3);
+  }
+
   /* ---- eyebrow --------------------------------------------------------- */
   .eyebrow {
     font-family: var(--font-mono);

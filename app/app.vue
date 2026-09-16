@@ -198,10 +198,10 @@ const saveStampedImages = async () => {
   <!-- The organic ground. Fixed, so it never repaints while a long gallery scrolls. -->
   <div class="blobs" aria-hidden="true"><i></i><i></i><i></i></div>
 
-  <div class="relative z-10 mx-auto max-w-7xl px-5 pb-20">
+  <div class="relative z-10 mx-auto flex min-h-dvh max-w-7xl flex-col px-5">
     <AppHeader :format="stampingOptions.format ?? 'jpg'" :quality="stampingOptions.quality ?? 75" />
 
-    <main>
+    <main class="flex-1">
       <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ImageUploader :selected-images="selectedImages"
                        :add-filename="addFilenameToWatermark"
@@ -277,7 +277,7 @@ const saveStampedImages = async () => {
       <ImageGallery :images="displayImages" :title="galleryTitle" :stamped="isStampingComplete" />
     </main>
 
-    <footer class="mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-line pt-5 text-sm text-ink-3">
+    <footer class="site-footer">
       <p class="flex items-center gap-2">
         <span aria-hidden="true">🖖</span> <span>Live long and prosper</span>
       </p>
