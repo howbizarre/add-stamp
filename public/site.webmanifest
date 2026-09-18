@@ -1,0 +1,16 @@
+{
+  "name": "Add Stamp",
+  "short_name": "Add Stamp",
+  "description": "Batch watermarking in the browser. Put your mark on a whole folder of frames — nothing leaves the tab.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f2ebe0",
+  "theme_color": "#f2ebe0",
+  "categories": ["photo", "utilities", "productivity"],
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

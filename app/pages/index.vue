@@ -20,6 +20,44 @@ const elapsedSeconds = ref<number | null>(null);
 
 const { initialize, setStamp, applyStampToImages, downloadStampedImages } = useImageStamping();
 
+usePageSeo({
+  title: 'Add Stamp — batch watermark photos in your browser',
+  description: 'Drop a folder of photos, stamp every one with your PNG mark and download the ZIP. Runs entirely in your browser — no upload, no account, free.',
+  path: '/'
+});
+
+/**
+ * Tells search engines what the page is rather than leaving them to infer it from the
+ * markup of a tool with an empty dropzone. `price: 0` is what earns the free label in a
+ * result; without an offer the software is assumed paid.
+ */
+useHead({
+  script: [{
+    type: 'application/ld+json',
+    innerHTML: JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'WebApplication',
+      name: 'Add Stamp',
+      url: useRuntimeConfig().public.siteUrl,
+      applicationCategory: 'MultimediaApplication',
+      operatingSystem: 'Any browser with WebAssembly',
+      browserRequirements: 'Requires WebAssembly',
+      description: 'Batch watermarking in the browser. Apply a PNG stamp to a whole folder of photos and download them as a ZIP, without uploading anything.',
+      offers: { '@type': 'Offer', price: 0, priceCurrency: 'USD' },
+      license: 'https://opensource.org/licenses/MIT',
+      author: { '@type': 'Person', name: 'howbizarre', url: 'https://github.com/howbizarre' },
+      featureList: [
+        'Batch watermarking of an entire folder',
+        'PNG stamps with transparency',
+        'Adjustable stamp opacity',
+        'Optional filename caption on each frame',
+        'Download as a single ZIP',
+        'Runs offline — no upload'
+      ]
+    })
+  }]
+});
+
 const handleImagesSelected = (images: File[]) => {
   selectedImages.value = images
   stampedImages.value = []; // Reset stamped images when new images are selected

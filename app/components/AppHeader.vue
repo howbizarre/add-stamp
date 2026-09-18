@@ -7,7 +7,7 @@
  * masthead that reads as a status bar makes the one real action on the page harder to find.
  */
 const route = useRoute();
-const { theme, toggle } = useTheme();
+const { toggle } = useTheme();
 
 /** On the home page the wordmark is the page's h1; elsewhere it is only the way back. */
 const isHome = computed(() => route.path === '/');
@@ -47,19 +47,24 @@ const isHome = computed(() => route.path === '/');
         Back to the studio
       </NuxtLink>
 
-      <!-- Below sm the label goes to screen readers only, so the control collapses to its
+      <!-- Which way the control points is decided by CSS, not by state. The pages are
+           prerendered, so a `theme === 'dark'` test here would bake one answer into the
+           static HTML and then contradict it on hydration; the `dark:` variant is already
+           right in the served markup, before any script has run.
+
+           Below sm the label goes to screen readers only, so the control collapses to its
            icon rather than pushing the row onto a second line. -->
       <button type="button"
               class="btn btn-quiet max-sm:px-3"
               @click="toggle">
-        <svg v-if="theme === 'dark'" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" class="hidden dark:block" aria-hidden="true">
           <circle cx="12" cy="12" r="4" />
           <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
         </svg>
-        <svg v-else xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="block dark:hidden" aria-hidden="true">
           <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z" />
         </svg>
-        <span class="max-sm:sr-only">{{ theme === 'dark' ? 'Light' : 'Dark' }}</span>
+        <span class="max-sm:sr-only"><span class="hidden dark:inline">Light</span><span class="dark:hidden">Dark</span></span>
       </button>
     </div>
   </header>

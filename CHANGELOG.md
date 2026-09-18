@@ -2,6 +2,38 @@
 
 ## [Unreleased]
 
+### Added
+
+- **A user guide at `/how-to-use`.** Five steps, each one paragraph and one illustration,
+  alternating sides down the page, then the limits and defaults that the steps have no room
+  for. The illustrations are built from the app's own components rather than screenshotted —
+  step three is the real opacity control. Reaching it turned the app into a two-page site:
+  `app.vue` is now a shell, the studio moved to `app/pages/index.vue`, and the masthead and
+  footer live in `app/layouts/default.vue`.
+- **The SEO the site never had.** Per-page title, description and canonical through
+  `usePageSeo`, Open Graph and Twitter cards over a generated 1200×630 image, `WebApplication`
+  and `HowTo` structured data, and a prerendered `sitemap.xml`.
+- **An icon set that belongs to this app.** `favicon.ico` (16/32/48, on a tighter optical
+  setting so "AS" survives the tab strip), an Apple touch icon, 192/512 PNGs, a maskable
+  variant with its own safe zone, and `site.webmanifest`. All rendered from one vector source
+  by `scripts/build-icons.mjs`. The previous `icon.png` was a calligraphic *N* left over from
+  a template, black on transparent, and invisible in dark mode.
+
+### Changed
+
+- **The pages are prerendered.** `ssr: false` meant the server returned an empty shell:
+  Google would render it eventually, and Bing and every unfurler behind Slack, X, LinkedIn and
+  Facebook would not. `ssr: true` plus `nitro.prerender` writes real HTML at build time, and
+  nothing is rendered per request. `useTheme` no longer reads `document` during setup, and the
+  theme toggle switches with CSS rather than state, so the static HTML is correct before any
+  script runs.
+- **`robots.txt` stopped forbidding the entire site.** It had said `Disallow: /` since the
+  project was scaffolded, which no amount of metadata would have worked around.
+- **The masthead lost its chip row.** `wasm v…`, `jpg · q75` and `≤ 120 MP` are reference, not
+  controls, and a masthead that reads as a status bar makes the one real action harder to
+  find. They moved to the guide, next to the rest of the numbers, and their space went to the
+  link to it.
+
 ### Removed
 
 - **The last of the File System Access API.** `saveStampedImagesToDirectory` and

@@ -14,9 +14,36 @@ const demoOpacity = ref(75);
 
 const root = ref<HTMLElement | null>(null);
 
+usePageSeo({
+  title: 'How to use Add Stamp — the five-step guide',
+  description: 'Bring in your frames, pick a PNG stamp, set the opacity, apply, and take the ZIP. The complete guide to batch watermarking with Add Stamp.',
+  path: '/how-to-use'
+});
+
+/**
+ * The same five steps, in the shape search engines read them. Kept next to the prose rather
+ * than in a data file so a rewritten step is a one-place change — a HowTo that has drifted
+ * from the page it describes is worse than no HowTo.
+ */
 useHead({
-  title: 'How to use — Add Stamp',
-  meta: [{ name: 'description', content: 'A step-by-step guide to batch watermarking with Add Stamp: pick frames, pick a PNG stamp, set the opacity, apply, download the ZIP.' }]
+  script: [{
+    type: 'application/ld+json',
+    innerHTML: JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'HowTo',
+      name: 'How to batch watermark photos with Add Stamp',
+      description: 'Apply a PNG watermark to a whole folder of photos in the browser and download them as a ZIP.',
+      totalTime: 'PT2M',
+      tool: [{ '@type': 'HowToTool', name: 'A PNG stamp with transparency, up to 10 MB' }],
+      step: [
+        { '@type': 'HowToStep', name: 'Bring in the frames', text: 'Drop a folder of images onto the Frames panel, or pick them from disk. JPEG, PNG and WebP all read, up to 120 MP per frame.' },
+        { '@type': 'HowToStep', name: 'Pick the mark', text: 'Choose a single PNG up to 10 MB. It is centred on every frame and scaled to fit with 10 px of clear space.' },
+        { '@type': 'HowToStep', name: 'Dial the opacity', text: 'Set the stamp opacity with the four presets or the slider. The preview reacts as you move.' },
+        { '@type': 'HowToStep', name: 'Apply the stamp', text: 'Press Apply stamp. Frames are processed one at a time and the progress line names the file in flight.' },
+        { '@type': 'HowToStep', name: 'Take the ZIP', text: 'Download the whole batch as one ZIP. Each file is JPEG at quality 75, named <original>_stamped.jpg.' }
+      ]
+    })
+  }]
 });
 
 /**

@@ -1,2 +1,8 @@
-User-Agent: *
-Disallow: /
+User-agent: *
+Allow: /
+
+# The wasm artifact is versioned and immutable — nothing to index, and a crawler fetching
+# a 2 MB binary on every deploy is bandwidth neither side wants.
+Disallow: /wasm/
+
+Sitemap: https://stamp.bizarre.how/sitemap.xml

@@ -106,8 +106,9 @@ artifact.
 npm run dev
 ```
 
-The app is served at [http://localhost:5654](http://localhost:5654). It runs with `ssr: false`,
-so the page is a static shell and everything happens client-side.
+The app is served at [http://localhost:5654](http://localhost:5654). The two pages are
+prerendered to static HTML at build time; all the work — decoding, stamping, zipping — still
+happens client-side.
 
 ## Using it
 
@@ -221,8 +222,11 @@ Light and dark are a set of CSS custom properties in
 them, and no component knows which theme it is in. Dark mode is class-based — `<html class="dark">`.
 
 The class is set by an inline script in [`nuxt.config.ts`](nuxt.config.ts) before first paint.
-With `ssr: false` the shell is a static `index.html`, so without it the app would flash the
-light palette on every load for anyone on a dark OS. The app follows the OS, including when
+The pages are prerendered as light-theme HTML — a build machine cannot know what the visitor
+prefers — so without it the app would flash the light palette on every load for anyone on a
+dark OS. For the same reason the theme toggle picks its icon with the `dark:` variant rather
+than from state, which would bake one answer into the static HTML and contradict it on
+hydration. The app follows the OS, including when
 the OS switches while the tab is open, until someone actually presses the toggle; that choice
 is then stored per browser under `add-stamp:theme`.
 
@@ -356,13 +360,14 @@ add-stamp/
 ├── scripts/build-wasm.mjs        # builds the crate and publishes the artifact
 ├── docs/PERFORMANCE.md           # where the time goes, and what could be done about it
 ├── public/wasm/v<version>/       # the published artifact (generated)
-├── nuxt.config.ts                # ssr: false, theme boot script, wasm route rules
+├── scripts/build-icons.mjs       # renders the icon set and the share card
+├── nuxt.config.ts                # prerender, head defaults, theme boot, wasm route rules
 └── wrangler.jsonc                # Cloudflare Worker config
 ```
 
 ## Technology stack
 
-- **Frontend**: Nuxt 4 (SPA, `ssr: false`), Vue 3, TypeScript, Tailwind CSS 4
+- **Frontend**: Nuxt 4 (prerendered, then client-side), Vue 3, TypeScript, Tailwind CSS 4
 - **Image processing**: Rust compiled to WebAssembly, with `simd128`, and no `unsafe` anywhere
 - **Image libraries**: the `image` crate with only `png`, `jpeg` and `webp`; `kamadak-exif`
   for orientation
