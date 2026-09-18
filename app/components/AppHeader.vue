@@ -1,46 +1,54 @@
 <script lang='ts' setup>
-interface Props {
-  format: string;
-  quality: number;
-
-  /**
-   * Mirrors `defaults::MAX_MEGAPIXELS` in wasm/src/lib.rs. Shown so a frame refused by the
-   * decoder is explained before it is refused, not after.
-   */
-  maxMegapixels?: number;
-}
-
-const props = withDefaults(defineProps<Props>(), { maxMegapixels: 120 });
-
+/**
+ * The masthead. Deliberately thin: identity, the way out to the guide, the theme.
+ *
+ * The build chips that used to sit here (wasm version, output format, megapixel ceiling)
+ * moved to the guide's "under the hood" panel. They are reference, not controls, and a
+ * masthead that reads as a status bar makes the one real action on the page harder to find.
+ */
+const route = useRoute();
 const { theme, toggle } = useTheme();
-const wasmVersion = useRuntimeConfig().public.wasmVersion;
 
-const outputLabel = computed(() => `${props.format} · q${props.quality}`);
+/** On the home page the wordmark is the page's h1; elsewhere it is only the way back. */
+const isHome = computed(() => route.path === '/');
 </script>
 
 <template>
   <header class="flex flex-wrap items-end justify-between gap-6 pt-9 pb-6">
-    <div class="flex items-center gap-4">
-      <div class="grid size-12 flex-none place-items-center rounded-2xl bg-linear-145 from-coral to-amber-400 shadow-e2" aria-hidden="true">
+    <NuxtLink to="/" class="group flex items-center gap-4 rounded-2xl no-underline">
+      <div class="grid size-12 flex-none place-items-center rounded-2xl bg-linear-145 from-coral to-amber-400 shadow-e2 transition-transform duration-200 ease-soft group-hover:-rotate-6" aria-hidden="true">
         <span class="font-display text-xl leading-none font-extrabold text-white">AS</span>
       </div>
 
       <div>
-        <h1 class="text-3xl leading-none font-extrabold sm:text-4xl">Add Stamp</h1>
+        <component :is="isHome ? 'h1' : 'p'" class="font-display text-3xl leading-none font-extrabold tracking-[-0.02em] sm:text-4xl">
+          Add Stamp
+        </component>
         <p class="mt-1 text-sm text-ink-2">Put your mark on a whole folder of frames. Nothing leaves the browser.</p>
       </div>
-    </div>
+    </NuxtLink>
 
     <div class="flex flex-wrap items-center gap-2">
-      <span class="chip">
-        <span class="chip-dot bg-teal!"></span>
-        wasm v{{ wasmVersion }}
-      </span>
-      <span class="chip">{{ outputLabel }}</span>
-      <span class="chip">&le; {{ maxMegapixels }} MP</span>
+      <!-- One link, pointing away from wherever you are. -->
+      <NuxtLink v-if="isHome" to="/how-to-use" class="btn btn-quiet">
+        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.8-.9 1.4v.4" />
+          <path d="M12 17h.01" />
+        </svg>
+        How to use
+      </NuxtLink>
+
+      <NuxtLink v-else to="/" class="btn btn-quiet">
+        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M19 12H5" />
+          <path d="m11 18-6-6 6-6" />
+        </svg>
+        Back to the studio
+      </NuxtLink>
 
       <!-- Below sm the label goes to screen readers only, so the control collapses to its
-           icon rather than pushing the chip row onto a third line. -->
+           icon rather than pushing the row onto a second line. -->
       <button type="button"
               class="btn btn-quiet max-sm:px-3"
               @click="toggle">
