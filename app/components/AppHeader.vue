@@ -28,7 +28,10 @@ const isHome = computed(() => route.path === '/');
       </div>
     </NuxtLink>
 
-    <div class="flex flex-wrap items-center gap-2">
+    <!-- Below sm the pair takes its own row and pushes to both edges: the way out of the
+         page on the left, the theme under the thumb on the right. Above it they stay a
+         tight pair at the end of the masthead. -->
+    <div class="flex flex-wrap items-center gap-2 max-sm:w-full max-sm:justify-between">
       <!-- One link, pointing away from wherever you are. -->
       <NuxtLink v-if="isHome" to="/how-to-use" class="btn btn-quiet">
         <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
