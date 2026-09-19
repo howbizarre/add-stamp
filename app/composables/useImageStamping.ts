@@ -145,6 +145,60 @@ export function packColor(hex: string): number {
   return parseInt(rgba, 16) >>> 0;
 }
 
+/** What a folder save ended up doing, for the line the UI shows afterwards. */
+export interface FolderSaveResult {
+  /** The folder's own name, not its path — the API never reveals where it sits on disk. */
+  directoryName: string;
+  written: number;
+}
+
+export interface FolderSaveOptions {
+  onProgress?: (progress: StampingProgress) => void;
+
+  /**
+   * Asked once, with the names already in the chosen folder that a save would replace.
+   * Returning false backs out without writing anything.
+   */
+  onConflict?: (names: string[]) => boolean | Promise<boolean>;
+}
+
+/**
+ * The slice of the File System Access API this file uses.
+ *
+ * Declared locally, under our own names, rather than as globals: a browser lib that already
+ * ships these types would clash with a second global declaration, and only Chromium
+ * implements them anyway.
+ */
+interface PickedFileHandle {
+  createWritable: () => Promise<PickedFileWriter>;
+}
+
+interface PickedFileWriter {
+  write: (data: BlobPart) => Promise<void>;
+  close: () => Promise<void>;
+  abort?: () => Promise<void>;
+}
+
+interface PickedDirectory {
+  readonly name: string;
+  getFileHandle: (name: string, options?: { create?: boolean }) => Promise<PickedFileHandle>;
+}
+
+interface DirectoryPicker {
+  showDirectoryPicker?: (options?: { id?: string; mode?: 'read' | 'readwrite'; startIn?: string }) => Promise<PickedDirectory>;
+}
+
+/**
+ * Whether this browser can hand us a folder to write into.
+ *
+ * Chromium only, and only in a secure context; Firefox and Safari have no picker at all,
+ * which is why the ZIP download stays the path every browser gets. Callers must check this
+ * from `onMounted` — on the server there is no `window` to ask.
+ */
+export function canSaveToFolder(): boolean {
+  return typeof window !== 'undefined' && typeof (window as unknown as DirectoryPicker).showDirectoryPicker === 'function';
+}
+
 export class ImageStampingService {
   private wasmModule: WasmModule | null = null;
   private stamper: WasmStamper | null = null;
@@ -301,6 +355,75 @@ export class ImageStampingService {
     return results;
   }
 
+  /**
+   * Writes the stamped frames straight into a folder the user picks, with no archive in
+   * between — the point being that the photos land where they are wanted, already unpacked.
+   *
+   * Rejects with the picker's own `AbortError` when the dialog is dismissed. That is a
+   * cancel, not a failure, and callers stay quiet about it. Resolves to null when the user
+   * declines the overwrite prompt, in which case nothing has been written yet.
+   */
+  async saveStampedImagesToFolder(
+    stampedImages: StampedImage[],
+    { onProgress, onConflict }: FolderSaveOptions = {}
+  ): Promise<FolderSaveResult | null> {
+    const picker = (window as unknown as DirectoryPicker).showDirectoryPicker;
+
+    if (!picker) {
+      throw new Error('This browser cannot pick a folder. Download the ZIP instead.');
+    }
+
+    // `id` makes Chromium reopen the dialog wherever the last batch was saved.
+    const directory = await picker.call(window, { id: 'add-stamp-output', mode: 'readwrite' });
+
+    // The picker grants write access to the whole folder, so a name already sitting there
+    // would be replaced without a word. Find those first and let the caller ask about them.
+    const clashes: string[] = [];
+
+    for (const { file } of stampedImages) {
+      try {
+        await directory.getFileHandle(file.name);
+        clashes.push(file.name);
+      } catch {
+        // Not there — nothing of the user's to overwrite.
+      }
+    }
+
+    if (clashes.length > 0 && onConflict && !(await onConflict(clashes))) {
+      return null;
+    }
+
+    let written = 0;
+
+    for (const { file } of stampedImages) {
+      onProgress?.({ current: written + 1, total: stampedImages.length, currentFileName: file.name });
+
+      try {
+        const handle = await directory.getFileHandle(file.name, { create: true });
+        const writer = await handle.createWritable();
+        let closed = false;
+
+        try {
+          await writer.write(file);
+          await writer.close();
+          closed = true;
+        } finally {
+          // A stream left open holds a lock on the file and leaves a zero-length stub
+          // behind, so an interrupted write is discarded rather than half-committed.
+          if (!closed) await writer.abort?.().catch(() => {});
+        }
+      } catch (error) {
+        const detail = error instanceof Error ? error.message : String(error);
+
+        throw new Error(`Failed to write ${file.name} into ${directory.name}: ${detail}`);
+      }
+
+      written++;
+    }
+
+    return { directoryName: directory.name, written };
+  }
+
   async downloadStampedImages(stampedImages: StampedImage[]): Promise<void> {
     try {
       // Create a ZIP archive with all stamped images
@@ -360,6 +483,9 @@ export const useImageStamping = () => {
       options: StampingOptions = {},
       onProgress?: (progress: StampingProgress) => void
     ) => service.applyStampToImages(images, options, onProgress),
-    downloadStampedImages: (stampedImages: StampedImage[]) => service.downloadStampedImages(stampedImages)
+    downloadStampedImages: (stampedImages: StampedImage[]) => service.downloadStampedImages(stampedImages),
+    saveStampedImagesToFolder: (stampedImages: StampedImage[], options: FolderSaveOptions = {}) =>
+      service.saveStampedImagesToFolder(stampedImages, options),
+    canSaveToFolder
   };
 };

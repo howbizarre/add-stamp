@@ -22,7 +22,7 @@ and no account.
 - 📝 Writes each photo's filename along its bottom edge, in an embedded font, optionally
 - 🔄 Uprights portrait frames from their EXIF orientation before anything is drawn
 - ⚡ Runs the whole pipeline in Rust/WebAssembly — no upload, no server, no account
-- 📦 Hands back one ZIP archive, which works in every browser
+- 📦 Writes the batch into a folder you pick, or hands back one ZIP — the ZIP works everywhere
 - 🌗 Light and dark themes, following the OS until you pick one
 - 🛡️ Refuses oversized images from their header, so one bad file cannot take down the batch
 
@@ -122,9 +122,13 @@ happens client-side.
    default.
 5. **Apply stamp.** A progress bar names each file as it goes; when it finishes, the gallery
    swaps to the stamped results and the panel reports how long the batch took.
-6. **Download ZIP.** One archive, `stamped-images-<timestamp>.zip`, holding a
-   `stamped-images/` folder of `<original name>_stamped.jpg`.
-7. **Reset all** clears the frames, the stamp, the results and the settings.
+6. **Save to folder** opens your file browser and writes the frames into the folder you
+   point at, as loose `<original name>_stamped.jpg` files. Chromium browsers only; anything
+   already there under the same name is listed and confirmed before it is replaced.
+7. **Download ZIP.** One archive, `stamped-images-<timestamp>.zip`, holding a
+   `stamped-images/` folder of `<original name>_stamped.jpg`. Every browser has this one.
+8. **Reset all** clears the frames, the stamp, the results and the settings. It is on screen
+   from the moment any of them is set.
 
 ### What the stamp actually does to a frame
 
@@ -323,8 +327,9 @@ WebAssembly with 128-bit SIMD is the baseline, which means **Chrome 91+, Firefox
 Safari 16.4+**. SIMD is enabled in [`wasm/.cargo/config.toml`](wasm/.cargo/config.toml) so LLVM
 can vectorise the blending and flattening loops.
 
-Saving is a ZIP download in every browser, so there is no File System Access API dependency
-and no browser-specific path to fall back to.
+Saving to a folder uses the File System Access API, which only Chromium ships — the button
+appears where `window.showDirectoryPicker` exists and nowhere else. The ZIP download needs
+nothing beyond a Blob, so every supported browser can take the batch that way.
 
 ## Project structure
 
@@ -342,7 +347,7 @@ add-stamp/
 │   │   ├── OpacityPresets.vue    # opacity swatches plus slider
 │   │   └── ImageGallery.vue      # the results, on a hue-free mount
 │   ├── composables/
-│   │   ├── useImageStamping.ts   # the WASM boundary: options, batching, ZIP
+│   │   ├── useImageStamping.ts   # the WASM boundary: options, batching, output
 │   │   └── useTheme.ts           # light/dark, stored per browser
 │   ├── utils/formatFileSize.ts
 │   └── app.vue                   # state for a run, and the status panel

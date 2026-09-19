@@ -14,11 +14,23 @@ const stampedImages = ref<File[]>([]);
 const isStamping = ref(false);
 const stampingProgress = ref<StampingProgress>({ current: 0, total: 0, currentFileName: '' });
 const isStampingComplete = ref(false);
-const isSaving = ref(false);
-const isSaved = ref(false);
+
+/** Which save is running, if any: the two buttons share a disabled state but not a spinner. */
+const savingMode = ref<'zip' | 'folder' | null>(null);
+const saveProgress = ref<StampingProgress>({ current: 0, total: 0, currentFileName: '' });
+
+/** What the last successful save did, in the words the chip shows. Null until one lands. */
+const saveNotice = ref<string | null>(null);
+
+/** Only Chromium has a folder picker, and only `window` can say so — hence onMounted. */
+const canPickFolder = ref(false);
 const elapsedSeconds = ref<number | null>(null);
 
-const { initialize, setStamp, applyStampToImages, downloadStampedImages } = useImageStamping();
+const { initialize, setStamp, applyStampToImages, downloadStampedImages, saveStampedImagesToFolder, canSaveToFolder } = useImageStamping();
+
+onMounted(() => {
+  canPickFolder.value = canSaveToFolder();
+});
 
 usePageSeo({
   title: 'Add Stamp — batch watermark photos in your browser',
@@ -62,26 +74,26 @@ const handleImagesSelected = (images: File[]) => {
   selectedImages.value = images
   stampedImages.value = []; // Reset stamped images when new images are selected
   isStampingComplete.value = false;
-  isSaved.value = false;
+  saveNotice.value = null;
 };
 
 const handleImagesReset = () => {
   selectedImages.value = [];
   stampedImages.value = [];
   isStampingComplete.value = false;
-  isSaved.value = false;
+  saveNotice.value = null;
 };
 
 const handlePngImageSelected = (image: File) => {
   selectedPngImage.value = image;
   isStampingComplete.value = false;
-  isSaved.value = false;
+  saveNotice.value = null;
 };
 
 const handlePngImageReset = () => {
   selectedPngImage.value = null;
   isStampingComplete.value = false;
-  isSaved.value = false;
+  saveNotice.value = null;
 };
 
 const handleOpacityChanged = (opacity: number) => {
@@ -94,8 +106,10 @@ const handleOpacityChanged = (opacity: number) => {
  * The object URLs behind the previews are revoked by ImageUploader and ImageGallery, which
  * both watch the arrays they are handed — emptying them here is what triggers that.
  *
- * Deliberately not guarded by a confirm: it only appears once a run has finished, next to
- * the download, where starting the next batch is the expected next move.
+ * Deliberately not guarded by a confirm: it does the same as the two Clear buttons on the
+ * panels above, which ask nothing either, and nothing it wipes takes more than a re-pick to
+ * get back — the stamped frames themselves are the one exception, and while they exist the
+ * save buttons sit right beside it.
  */
 const resetAll = () => {
   selectedImages.value = [];
@@ -106,8 +120,9 @@ const resetAll = () => {
   stampingProgress.value = { current: 0, total: 0, currentFileName: '' };
   isStamping.value = false;
   isStampingComplete.value = false;
-  isSaving.value = false;
-  isSaved.value = false;
+  savingMode.value = null;
+  saveProgress.value = { current: 0, total: 0, currentFileName: '' };
+  saveNotice.value = null;
   elapsedSeconds.value = null;
 };
 
@@ -131,8 +146,17 @@ const canAddStamp = computed(() => {
   return selectedImages.value.length > 0 && selectedPngImage.value !== null && !isStamping.value && !isStampingComplete.value;
 });
 
-const showSaveButton = computed(() => {
-  return isStampingComplete.value && !isSaved.value;
+/**
+ * Anything at all moved away from a freshly loaded page — which is exactly when Reset all
+ * has something to undo, and so exactly when it is worth showing. Settings count: an opacity
+ * dragged to 30 and a caption switched off are as much work to redo as a folder re-picked.
+ */
+const isDirty = computed(() => {
+  return selectedImages.value.length > 0
+    || selectedPngImage.value !== null
+    || stampedImages.value.length > 0
+    || stampOpacity.value !== INITIAL_OPACITY
+    || addFilenameToWatermark.value !== INITIAL_ADD_FILENAME;
 });
 
 const displayImages = computed(() => {
@@ -207,27 +231,73 @@ const addStampToImages = async () => {
   }
 };
 
+/** The results in the shape both save paths take. */
+const stampedResults = () => stampedImages.value.map(file => ({
+  file,
+  originalName: file.name.replace(/_stamped\.(jpg|webp)$/, '')
+}));
+
 const saveStampedImages = async () => {
   if (stampedImages.value.length === 0) {
     return;
   }
 
-  isSaving.value = true;
+  savingMode.value = 'zip';
 
   try {
-    const results = stampedImages.value.map(file => ({
-      file,
-      originalName: file.name.replace(/_stamped\.(jpg|webp)$/, '')
-    }));
-
-    // Always download as ZIP for all browsers
-    await downloadStampedImages(results);
-    isSaved.value = true;
+    // The one path every browser has, folder picker or not.
+    await downloadStampedImages(stampedResults());
+    saveNotice.value = 'ZIP downloaded';
   } catch (error) {
     console.error('Error saving stamped images:', error);
     alert(`Error saving images: ${error}`);
   } finally {
-    isSaving.value = false;
+    savingMode.value = null;
+  }
+};
+
+/**
+ * Writes the frames into a folder the user points at, as loose files.
+ *
+ * Only offered where `canPickFolder` says the browser has a picker; everywhere else the ZIP
+ * is the only button on screen.
+ */
+const saveStampedImagesToDisk = async () => {
+  if (stampedImages.value.length === 0) {
+    return;
+  }
+
+  savingMode.value = 'folder';
+  saveProgress.value = { current: 0, total: stampedImages.value.length, currentFileName: '' };
+
+  try {
+    const result = await saveStampedImagesToFolder(stampedResults(), {
+      onProgress: (progress: StampingProgress) => {
+        saveProgress.value = progress;
+      },
+      onConflict: (names: string[]) => {
+        const shown = names.slice(0, 5).join('\n');
+        const rest = names.length > 5 ? `\n…and ${names.length - 5} more` : '';
+
+        return confirm(`That folder already holds ${names.length} file(s) with these names:\n\n${shown}${rest}\n\nSaving replaces them. Continue?`);
+      }
+    });
+
+    // Null is the overwrite prompt declined; the picker's own cancel throws instead.
+    if (result) {
+      saveNotice.value = `${result.written} frames saved to ${result.directoryName}`;
+    }
+  } catch (error) {
+    // Dismissing the picker is a decision, not a fault — say nothing about it.
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      return;
+    }
+
+    console.error('Error saving stamped images to folder:', error);
+    alert(`Error saving images: ${error}`);
+  } finally {
+    savingMode.value = null;
+    saveProgress.value = { current: 0, total: 0, currentFileName: '' };
   }
 };
 </script>
@@ -283,23 +353,34 @@ const saveStampedImages = async () => {
           Apply stamp
         </button>
 
-        <button v-if="showSaveButton"
+        <button v-if="isStampingComplete && canPickFolder"
                 type="button"
-                class="btn btn-secondary btn-lg"
-                :disabled="isSaving"
-                @click="saveStampedImages">
-          <span v-if="isSaving" class="size-4 animate-spin rounded-full border-2 border-teal-ink/30 border-t-teal-ink"></span>
-          {{ isSaving ? 'Zipping…' : `Download ZIP · ${formatFileSize(stampedSize)}` }}
+                class="btn btn-primary btn-lg"
+                :disabled="savingMode !== null"
+                @click="saveStampedImagesToDisk">
+          <span v-if="savingMode === 'folder'" class="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></span>
+          <span class="tnum">{{ savingMode === 'folder' ? `Saving ${saveProgress.current} / ${saveProgress.total}…` : 'Save to folder…' }}</span>
         </button>
-
-        <span v-if="isSaved" class="chip chip-ok">
-          <span class="chip-dot"></span>
-          ZIP downloaded
-        </span>
 
         <button v-if="isStampingComplete"
                 type="button"
+                class="btn btn-secondary btn-lg"
+                :disabled="savingMode !== null"
+                @click="saveStampedImages">
+          <span v-if="savingMode === 'zip'" class="size-4 animate-spin rounded-full border-2 border-teal-ink/30 border-t-teal-ink"></span>
+          {{ savingMode === 'zip' ? 'Zipping…' : `Download ZIP · ${formatFileSize(stampedSize)}` }}
+        </button>
+
+        <span v-if="saveNotice" class="chip chip-ok tnum">
+          <span class="chip-dot"></span>
+          {{ saveNotice }}
+        </span>
+
+        <!-- Shown the moment the page differs from how it loaded, not only at the end of a run. -->
+        <button v-if="isDirty"
+                type="button"
                 class="btn btn-quiet btn-lg"
+                :disabled="isStamping || savingMode !== null"
                 @click="resetAll">
           Reset all
         </button>

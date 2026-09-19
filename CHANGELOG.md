@@ -18,8 +18,20 @@
   variant with its own safe zone, and `site.webmanifest`. All rendered from one vector source
   by `scripts/build-icons.mjs`. The previous `icon.png` was a calligraphic *N* left over from
   a template, black on transparent, and invisible in dark mode.
+- **Save to folder, next to the ZIP.** `saveStampedImagesToFolder` writes the stamped frames
+  straight into a folder the user picks, as loose files — the archive was only ever a way
+  around the browser, and where a browser has a folder picker it is a step to delete, not to
+  keep. The File System Access API is back, but this time behind a button: the version
+  removed below was unreachable code. Chromium only, checked from `onMounted` rather than
+  assumed, and the ZIP remains the path every browser gets. Names already in the chosen
+  folder are counted and confirmed before anything is replaced, and a dismissed picker is
+  treated as a decision rather than an error.
 
 ### Changed
+
+- **`Reset all` appears as soon as the page differs from how it loaded** — a frame added, a
+  stamp picked, an opacity dragged — instead of only after a finished run. It was the one
+  control that could not undo the state it was hidden behind.
 
 - **The pages are prerendered.** `ssr: false` meant the server returned an empty shell:
   Google would render it eventually, and Bing and every unfurler behind Slack, X, LinkedIn and

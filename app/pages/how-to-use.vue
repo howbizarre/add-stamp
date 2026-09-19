@@ -40,7 +40,7 @@ useHead({
         { '@type': 'HowToStep', name: 'Pick the mark', text: 'Choose a single PNG up to 10 MB. It is centred on every frame and scaled to fit with 10 px of clear space.' },
         { '@type': 'HowToStep', name: 'Dial the opacity', text: 'Set the stamp opacity with the four presets or the slider. The preview reacts as you move.' },
         { '@type': 'HowToStep', name: 'Apply the stamp', text: 'Press Apply stamp. Frames are processed one at a time and the progress line names the file in flight.' },
-        { '@type': 'HowToStep', name: 'Take the ZIP', text: 'Download the whole batch as one ZIP. Each file is JPEG at quality 75, named <original>_stamped.jpg.' }
+        { '@type': 'HowToStep', name: 'Take the batch', text: 'Save the frames straight into a folder you pick, or download the whole batch as one ZIP. Each file is JPEG at quality 75, named <original>_stamped.jpg.' }
       ]
     })
   }]
@@ -294,19 +294,23 @@ onMounted(() => {
 
       <span class="rail" aria-hidden="true"></span>
 
-      <GuideStep index="05" eyebrow="Step five" title="Take the ZIP">
+      <GuideStep index="05" eyebrow="Step five" title="Take the batch">
         <p>
-          The gallery turns into the stamped set, every frame ticked, and the button says what
-          the archive weighs before you commit to the download. One ZIP for the whole batch —
-          no browser would let a hundred separate saves through anyway.
+          The gallery turns into the stamped set, every frame ticked, and two ways out sit
+          beside it. <strong class="font-semibold text-ink">Save to folder</strong> opens your
+          file browser, and the frames are written into the folder you point at as loose
+          files — nothing to unpack. <strong class="font-semibold text-ink">Download ZIP</strong>
+          says what the archive weighs before you commit, and works in every browser.
         </p>
         <p>
           <strong class="font-semibold text-ink">Reset all</strong> returns the page to how it
-          loaded: frames, stamp, results and settings all go, ready for the next folder.
+          loaded: frames, stamp, results and settings all go, ready for the next folder. It is
+          there from the moment anything changes, not only at the end of a run.
         </p>
 
         <template #points>
-          <li>Everything lands in a stamped-images/ folder inside the archive.</li>
+          <li>Saving to a folder needs Chrome, Edge or another Chromium browser; the ZIP does not.</li>
+          <li>Inside the archive everything lands in a stamped-images/ folder.</li>
           <li>Output is JPEG at quality 75, named &lt;original&gt;_stamped.jpg.</li>
           <li>Hover a frame in the gallery for its dimensions and megapixels.</li>
         </template>
@@ -333,7 +337,10 @@ onMounted(() => {
             </p>
           </div>
 
-          <span class="btn btn-secondary self-start" aria-hidden="true">Download ZIP · 214.7 MB</span>
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="btn btn-primary" aria-hidden="true">Save to folder…</span>
+            <span class="btn btn-secondary" aria-hidden="true">Download ZIP · 214.7 MB</span>
+          </div>
         </template>
       </GuideStep>
     </div>
