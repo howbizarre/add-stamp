@@ -24,16 +24,22 @@ SOFTWARE.
 
 This project includes the following third-party software:
 
-### Font: Ubuntu-M.ttf
-- **License**: Ubuntu Font License (UFL)
+### Font: Ubuntu Medium
+- **License**: Ubuntu Font Licence 1.0, see [wasm/src/FONT-LICENSE.md](wasm/src/FONT-LICENSE.md)
 - **Source**: [Ubuntu Font Family](https://design.ubuntu.com/font/)
-- **Usage**: Text watermarking functionality
+- **Usage**: `app/assets/fonts/Ubuntu-M.ttf` is the full face; a subset of it is embedded in the
+  WebAssembly binary to draw the caption
 
 ### Rust Dependencies
-- **image**: MIT/Apache-2.0 License
-- **imageproc**: MIT License  
-- **rusttype**: MIT/Apache-2.0 License
-- **wasm-bindgen**: MIT/Apache-2.0 License
+Every crate compiled into the WebAssembly binary, with the licence it is used under and that
+licence's text, is listed in
+[packages/image-stamper/THIRD-PARTY-LICENSES.md](packages/image-stamper/THIRD-PARTY-LICENSES.md),
+generated from `wasm/Cargo.lock`. The direct dependencies are:
+- **image**: MIT OR Apache-2.0
+- **ab_glyph**: Apache-2.0
+- **kamadak-exif**: BSD-2-Clause
+- **wasm-bindgen**: MIT OR Apache-2.0
+- **console_error_panic_hook**: MIT OR Apache-2.0
 
 ### JavaScript/TypeScript Dependencies
 Please refer to `package.json` for a complete list of dependencies and their respective licenses.

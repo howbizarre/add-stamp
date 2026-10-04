@@ -14,6 +14,10 @@ and no account.
 > build are documented in [README-WASM.md](README-WASM.md).
 > Measurements and the open encoder decision live in [docs/PERFORMANCE.md](docs/PERFORMANCE.md).
 
+> **📦 Use the engine in your own project**: the pipeline is published to npm as
+> [`image-stamper`](packages/image-stamper) (`npm install image-stamper`), with a typed API for
+> browsers, bundlers and Node. Its README is in [packages/image-stamper](packages/image-stamper/README.md).
+
 ## What it does
 
 - 🖼️ Batch-stamps a whole selection of frames in one pass, with per-file progress

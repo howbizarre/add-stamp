@@ -1,0 +1,80 @@
+{
+  "name": "image-stamper",
+  "version": "0.1.0",
+  "description": "Watermark photos in Rust/WebAssembly, in the browser or in Node: scale a PNG mark to fit each frame, composite it centred at any opacity, caption it, and re-encode as JPEG or WebP. Nothing leaves the machine.",
+  "keywords": [
+    "watermark",
+    "stamp",
+    "image",
+    "image-processing",
+    "wasm",
+    "webassembly",
+    "rust",
+    "jpeg",
+    "webp",
+    "png",
+    "exif",
+    "browser",
+    "client-side",
+    "batch"
+  ],
+  "homepage": "https://github.com/howbizarre/add-stamp/tree/master/packages/image-stamper#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/howbizarre/add-stamp.git",
+    "directory": "packages/image-stamper"
+  },
+  "bugs": {
+    "url": "https://github.com/howbizarre/add-stamp/issues"
+  },
+  "author": {
+    "name": "howbizarre",
+    "url": "https://github.com/howbizarre"
+  },
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "node": "./dist/node.js",
+      "default": "./dist/index.js"
+    },
+    "./wasm": {
+      "types": "./wasm/image_stamper.d.ts",
+      "default": "./wasm/image_stamper.js"
+    },
+    "./image_stamper_bg.wasm": "./wasm/image_stamper_bg.wasm",
+    "./package.json": "./package.json"
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "wasm/image_stamper.js",
+    "wasm/image_stamper_bg.wasm",
+    "wasm/image_stamper.d.ts",
+    "wasm/image_stamper_bg.wasm.d.ts",
+    "CHANGELOG.md",
+    "FONT-LICENSE.md",
+    "THIRD-PARTY-LICENSES.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "build:wasm": "node scripts/build.mjs --wasm",
+    "build:ts": "node scripts/build.mjs --ts",
+    "check": "node scripts/build.mjs --check",
+    "clean": "node scripts/build.mjs --clean",
+    "test": "node --test test/stamper.test.mjs test/init.test.mjs test/browser-entry.test.mjs test/raw-init.test.mjs",
+    "fixtures": "node scripts/make-fixtures.mjs",
+    "prepack": "node scripts/build.mjs --check",
+    "licenses": "node scripts/third-party-licenses.mjs",
+    "build:licenses": "node scripts/build.mjs --licenses"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "typescript": "^7.0.2"
+  }
+}

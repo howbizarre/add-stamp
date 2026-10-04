@@ -4,6 +4,13 @@
 
 ### Added
 
+- **The engine as an npm package.** [`packages/image-stamper`](packages/image-stamper) wraps the
+  wasm-bindgen output in a typed API — `createImageStamper()`, `setStamp`, `stamp`, options as a
+  plain object with CSS hex colours, a result that knows its MIME type — and is published as
+  `image-stamper`. One entry for browsers and bundlers, where the glue finds the `.wasm` next to
+  itself, and one for Node, which reads it from disk because Node's `fetch` rejects `file:` URLs.
+  Built from the crate in `wasm/` by its own script, tested end-to-end with `node --test` against
+  the packed layout. The app does not consume the package yet; it still loads `public/wasm/`.
 - **A user guide at `/how-to-use`.** Five steps, each one paragraph and one illustration,
   alternating sides down the page, then the limits and defaults that the steps have no room
   for. The illustrations are built from the app's own components rather than screenshotted —

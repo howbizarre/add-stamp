@@ -10,6 +10,10 @@ memory-safe Rust (there is no `unsafe` anywhere in the crate) inside the WebAsse
 For the application around it — the interface, the batch flow, deployment — see
 [README.md](README.md).
 
+The same crate is published to npm as [`image-stamper`](packages/image-stamper/README.md), with a
+typed wrapper for browsers and Node. [`packages/image-stamper/scripts/build.mjs`](packages/image-stamper/scripts/build.mjs)
+builds it from this directory; the app itself still loads the artifact from `public/wasm/`.
+
 ## Building
 
 ```bash
