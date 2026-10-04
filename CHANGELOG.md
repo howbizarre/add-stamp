@@ -10,7 +10,7 @@
   `@howbizarre/image-stamper`. One entry for browsers and bundlers, where the glue finds the `.wasm` next to
   itself, and one for Node, which reads it from disk because Node's `fetch` rejects `file:` URLs.
   Built from the crate in `wasm/` by its own script, tested end-to-end with `node --test` against
-  the packed layout. The app does not consume the package yet; it still loads `public/wasm/`.
+  the packed layout. The app consumes it; see *Changed* below.
 - **A user guide at `/how-to-use`.** Five steps, each one paragraph and one illustration,
   alternating sides down the page, then the limits and defaults that the steps have no room
   for. The illustrations are built from the app's own components rather than screenshotted —
@@ -36,6 +36,13 @@
 
 ### Changed
 
+- **The app loads the engine from npm.** `useImageStamping` imports `@howbizarre/image-stamper`
+  instead of fetching `/wasm/v<version>/image_stamper.js` at runtime, and the raw-binding
+  plumbing it carried (building the WASM options handle, packing colours, freeing memory) is
+  now the package's job. Vite bundles the `.wasm` as a hashed asset under `/_nuxt/`, so the
+  versioned directory, the `/wasm/**` route rules and `runtimeConfig.public.wasmVersion` are
+  gone, `npm run build` is just `nuxt build`, and running or deploying the app no longer needs
+  Rust. The guide shows the package version as the engine version.
 - **The embedded font is renamed, as its licence requires.** `wasm/src/Ubuntu-M-subset.ttf`
   is now *Ubuntu Medium derivative Image Stamper*. The Ubuntu Font Licence 1.0 treats a subset
   as a Modified Version, and condition 2(c) wants the original name with "derivative X"
@@ -63,6 +70,9 @@
 
 ### Removed
 
+- **`scripts/build-wasm.mjs`, `public/wasm/` and the `build:wasm`, `copy:wasm`, `clean:wasm`
+  and `dev:wasm` scripts.** The engine is built by `packages/image-stamper` and consumed as a
+  dependency.
 - **The last of the File System Access API.** `saveStampedImagesToDirectory` and
   `saveStampedImagesToSpecificDirectory` had been unreachable since the save flow became a
   ZIP in 1.0.5 — the first only forwarded to the ZIP path, the second still carried the

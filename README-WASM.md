@@ -12,20 +12,21 @@ For the application around it — the interface, the batch flow, deployment — 
 
 The same crate is published to npm as [`@howbizarre/image-stamper`](packages/image-stamper/README.md), with a
 typed wrapper for browsers and Node. [`packages/image-stamper/scripts/build.mjs`](packages/image-stamper/scripts/build.mjs)
-builds it from this directory; the app itself still loads the artifact from `public/wasm/`.
+builds it from this directory, and the app consumes that package like any other dependency.
 
 ## Building
 
+The crate is built by the npm package's script, into `packages/image-stamper/wasm/`:
+
 ```bash
-npm run build:wasm     # compile the crate and publish to public/wasm/v<version>/
-npm run copy:wasm      # republish an existing wasm/pkg/ without recompiling
-npm run clean:wasm     # remove wasm/pkg/ and public/wasm/
+npm run build:package  # wasm-pack --target web, then tsc, into packages/image-stamper
+npm run test:package   # the package's Node tests against the built output
 npm test               # the Rust test suite, native target (70 unit + 21 end-to-end)
 npm run bench:wasm     # time the hot path on a synthetic 24 MP frame
 ```
 
-`npm run build` runs `build:wasm` first, so a normal build or deploy always ships a current
-artifact.
+The app does not build the crate at all: it depends on the published
+`@howbizarre/image-stamper`, and Vite bundles the `.wasm` from it as a hashed asset.
 
 ### Prerequisites
 
@@ -37,24 +38,14 @@ The toolchain is pinned because the `wasm-bindgen` crate version has to match th
 `wasm-bindgen-cli` that `wasm-pack` runs. Pinning it and committing `Cargo.lock` keeps that
 pair reproducible across machines and CI.
 
-### Why the artifact is versioned
+### How the artifact reaches the browser
 
-[`scripts/build-wasm.mjs`](scripts/build-wasm.mjs) publishes to `public/wasm/v<version>/`,
-taking the version from `package.json`, and `nuxt.config.ts` exposes it to the client as
-`runtimeConfig.public.wasmVersion`.
-
-The glue JS locates its `.wasm` relative to its own URL, and the two must agree on
-wasm-bindgen's schema version. At a fixed path a browser could hold a cached glue from one
-deploy and fetch the `.wasm` from the next — a runtime schema error that is very hard to
-diagnose. Inside a versioned directory they move as a pair, which is also what makes the
-`immutable` cache headers safe.
-
-**So: bump `version` in `package.json` whenever the crate changes.** The build script wipes
-`public/wasm/` on every publish, so old versions do not pile up.
-
-The script also fails the build if `wasm-pack` produced no `.wasm`, or an empty one. Without
-that check, `nuxt build` knows nothing about the runtime `import()` and a deploy with an
-empty `public/wasm/` succeeds, only failing when a user clicks "Add Stamp".
+`wasm-pack --target web` emits glue JS that finds its `.wasm` with
+`new URL('image_stamper_bg.wasm', import.meta.url)`. Vite rewrites that into a content-hashed
+asset under `/_nuxt/`, so the glue and the binary of one build always travel together and can
+be cached immutably; a cached glue from one deploy can never meet the binary of the next. The
+engine version shown in the guide comes from the package's `package.json`, exposed as
+`runtimeConfig.public.engineVersion`.
 
 ## JavaScript API
 
@@ -226,13 +217,13 @@ benchmarks mislead here), and one open decision — swapping the JPEG encoder, w
 
 **`wasm-pack: command not found`** — `cargo install wasm-pack`.
 
-**"Failed to load WASM module"** in the browser — `public/wasm/v<version>/` is missing or
-stale. Run `npm run build:wasm`. Check that `version` in `package.json` matches the directory
-name; a bumped version with no rebuild points the client at a directory that does not exist.
+**"Failed to load the image engine"** in the browser — the `.wasm` asset under `/_nuxt/` did
+not load. Check the network panel for the request and its status; a stale HTML page after a
+deploy is the usual cause, so hard-reload.
 
 **"error validating input" from `wasm-opt`** — the Binaryen feature list in `Cargo.toml` is
 missing something the current rustc emits. Add the feature it names.
 
-**A schema mismatch at runtime** — a cached glue JS paired with a different `.wasm`. This is
-what the versioned directory prevents; if it happens, something is serving `/wasm/` from a
-path the build script did not write.
+**A schema mismatch at runtime** — the glue JS and the `.wasm` come from different builds.
+With the package bundled by Vite this cannot happen in the app; if it does, something outside
+the build is serving one of the two files.

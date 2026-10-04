@@ -43,16 +43,19 @@ and no account.
 git clone https://github.com/howbizarre/add-stamp.git
 cd add-stamp
 npm install
-npm run dev:wasm
+npm run dev
 ```
 
 Then open [http://localhost:5654](http://localhost:5654).
 
-`dev:wasm` builds the WebAssembly module and then starts the dev server. It needs Rust and
-`wasm-pack` — see [Prerequisites](#prerequisites). Plain `npm run dev` skips the build and
-serves whatever is already in `public/wasm/`.
+The watermarking engine is an ordinary dependency, [`@howbizarre/image-stamper`](packages/image-stamper),
+so running the app needs Node only. Rust and `wasm-pack` are needed to work on the engine
+itself; see [Prerequisites](#prerequisites).
 
 ## Prerequisites
+
+Node is all the app itself needs. Rust and wasm-pack are for the engine: the crate in
+[`wasm/`](wasm/) and the npm package built from it in [`packages/image-stamper`](packages/image-stamper).
 
 | Tool | Version | Install |
 | --- | --- | --- |
@@ -84,27 +87,13 @@ cargo install wasm-pack
 npm install     # or pnpm install / yarn install / bun install
 ```
 
-### 2. Build the WASM module
+### 2. Start the dev server
 
-```bash
-npm run build:wasm     # compile the crate and publish the artifact
-npm run copy:wasm      # republish an existing wasm/pkg/ without recompiling
-```
+The engine, `@howbizarre/image-stamper`, was installed in step 1 like any other dependency.
+Vite bundles its `.wasm` as a hashed asset under `/_nuxt/`, so there is nothing to build
+before the app runs. To run the app against a locally modified engine, see
+[Changing the Rust code](#changing-the-rust-code).
 
-The artifact is published to `public/wasm/v<version>/`, where `<version>` is the `version`
-field of `package.json`:
-
-- `image_stamper.js`
-- `image_stamper_bg.wasm`
-
-The build script fails loudly if either is missing or empty, so a successful
-`npm run build:wasm` is itself the check. [README-WASM.md](README-WASM.md#why-the-artifact-is-versioned)
-explains why the directory carries a version and when to bump it.
-
-`npm run build` runs `build:wasm` first, so an ordinary build or deploy always ships a current
-artifact.
-
-### 3. Start the dev server
 
 ```bash
 npm run dev
@@ -181,11 +170,9 @@ the numbers, so the two cannot drift apart.
 | Script | What it does |
 | --- | --- |
 | `npm run dev` | Dev server on port 5654 |
-| `npm run dev:wasm` | Build the WASM module, then the dev server |
-| `npm run build` | Build the WASM module, then the Nuxt app |
-| `npm run build:wasm` | Compile the crate and publish to `public/wasm/v<version>/` |
-| `npm run copy:wasm` | Republish an existing `wasm/pkg/` without recompiling |
-| `npm run clean:wasm` | Remove `wasm/pkg/` and `public/wasm/` |
+| `npm run build` | Build the Nuxt app: prerender the pages and bundle the Worker |
+| `npm run build:package` | Build the engine package in `packages/image-stamper` (needs Rust and wasm-pack) |
+| `npm run test:package` | The engine package's Node test suite, against its built output |
 | `npm test` | The Rust test suite, on the native target |
 | `npm run bench:wasm` | Time the pixel helpers on a synthetic 24 MP frame (native) |
 | `npm run preview` | Build, then serve the Worker locally with Wrangler |
@@ -197,17 +184,21 @@ the numbers, so the two cannot drift apart.
 
 ### Changing the Rust code
 
-Vite knows nothing about the runtime `import()` of the artifact, so editing `wasm/` does not
-trigger a reload. Rebuild and restart:
+The app consumes the engine as a published package, so a change in `wasm/` reaches it through
+a release of `@howbizarre/image-stamper`: build the package, bump its version, publish, then
+update the dependency here.
 
 ```bash
-npm run build:wasm && npm run dev     # or just: npm run dev:wasm
+npm test                 # the Rust suite
+npm run build:package    # wasm-pack and tsc, into packages/image-stamper
+npm run test:package     # the package's own tests against the built output
 ```
 
-**Bump `version` in `package.json` whenever the crate changes.** The artifact is served
-immutably out of a version-stamped directory, so without a bump a returning browser keeps the
-old `.wasm`. Keep `wasm/Cargo.toml`'s version in step, so a deployed binary can be traced back
-to a commit.
+To try an unreleased engine in the app, point the dependency at the local package for the
+duration (`npm install ./packages/image-stamper` after `npm run build:package`) and restore
+the registry version before committing. Vite does not watch the package, so restart the dev
+server after rebuilding it. The crate version each package release was built from is recorded
+in the package's [CHANGELOG.md](packages/image-stamper/CHANGELOG.md).
 
 ### Changing the Vue/TypeScript code
 
@@ -256,44 +247,38 @@ npx wrangler --cwd .output/ deploy
 
 Things worth knowing:
 
-1. **The WASM files ride along.** `build:wasm` writes them into `public/`, so `nuxt build`
-   copies them into `.output/public/wasm/v<version>/`.
-2. **Headers are set in `nuxt.config.ts`.** `routeRules` gives `/wasm/**` the right
-   content types and `Cache-Control: public, max-age=31536000, immutable`.
-3. **Immutability is safe because the directory is versioned.** The glue JS and its `.wasm`
-   move as a pair, so a browser can never combine a cached glue from one deploy with the
-   `.wasm` from the next — a wasm-bindgen schema error that is very hard to diagnose in the
-   field.
-4. **Nothing is written server-side.** Photos are processed in the browser and handed back as
+1. **The engine rides along as a hashed asset.** Vite bundles `@howbizarre/image-stamper`
+   into the client build and emits its `.wasm` under `.output/public/_nuxt/` with a content
+   hash in the name. It is cached immutably like every other asset, and a deploy can never
+   pair an old glue with a new binary, because the two come out of one build.
+2. **No special headers are needed.** Workers static assets serve `.wasm` as
+   `application/wasm`, which lets the browser use streaming instantiation.
+3. **Nothing is written server-side.** Photos are processed in the browser and handed back as
    a ZIP; the Worker only serves static files.
 
-After a deploy, check that both of these resolve, with `<version>` matching `package.json`:
-
-- `https://your-domain.com/wasm/v<version>/image_stamper.js`
-- `https://your-domain.com/wasm/v<version>/image_stamper_bg.wasm`
+After a deploy, open the site, stamp one frame, and check the network panel for a `200` on
+`/_nuxt/image_stamper_bg-<hash>.wasm` with the type `application/wasm`.
 
 ## Troubleshooting
 
-### The WASM build
+### The engine build
 
 ```bash
 rustc --version && cargo --version     # is Rust there?
 wasm-pack --version                    # is wasm-pack there?
-npm run clean:wasm && npm run build:wasm
+npm run build:package
 ```
 
 `wasm-pack: command not found` means `cargo install wasm-pack`. An `error validating input`
 from `wasm-opt` means the Binaryen feature list in `wasm/Cargo.toml` is missing something the
 current `rustc` emits — add the feature it names.
 
-### "Failed to load WASM module"
+### "Failed to load the image engine"
 
-`public/wasm/v<version>/` is missing or stale. Run `npm run build:wasm`, and check that
-`version` in `package.json` matches the directory name — a bumped version with no rebuild
-points the client at a directory that does not exist.
-
-If the browser complains that `applyStamp` is not a function, it is running a stale artifact:
-rebuild, then hard-reload.
+The browser could not fetch or instantiate `/_nuxt/image_stamper_bg-<hash>.wasm`. Check the
+network panel: a `404` means a stale HTML page is referencing an asset from a previous deploy,
+so hard-reload; a response that is not `application/wasm` means something in front of the
+Worker is rewriting content types.
 
 ### Text renders as empty boxes
 
@@ -366,23 +351,23 @@ add-stamp/
 │   │   └── Ubuntu-M-subset.ttf   # the embedded subset
 │   ├── tests/pipeline.rs         # end-to-end tests
 │   └── examples/bench.rs         # timings for the hot path
-├── scripts/build-wasm.mjs        # builds the crate and publishes the artifact
+├── packages/image-stamper/       # the engine as an npm package: typed wrapper, tests, licences
 ├── docs/PERFORMANCE.md           # where the time goes, and what could be done about it
-├── public/wasm/v<version>/       # the published artifact (generated)
 ├── scripts/build-icons.mjs       # renders the icon set and the share card
-├── nuxt.config.ts                # prerender, head defaults, theme boot, wasm route rules
+├── nuxt.config.ts                # prerender, head defaults, theme boot
 └── wrangler.jsonc                # Cloudflare Worker config
 ```
 
 ## Technology stack
 
 - **Frontend**: Nuxt 4 (prerendered, then client-side), Vue 3, TypeScript, Tailwind CSS 4
-- **Image processing**: Rust compiled to WebAssembly, with `simd128`, and no `unsafe` anywhere
+- **Image processing**: Rust compiled to WebAssembly, with `simd128`, and no `unsafe` anywhere,
+  consumed as the npm package `@howbizarre/image-stamper`
 - **Image libraries**: the `image` crate with only `png`, `jpeg` and `webp`; `kamadak-exif`
   for orientation
 - **Text rendering**: `ab_glyph`, with per-glyph advances and kerning
 - **Archiving**: JSZip
-- **Build**: Vite, wasm-pack, a Node publish script
+- **Build**: Vite for the app; wasm-pack and tsc for the engine package
 - **Hosting**: Cloudflare Workers via Wrangler
 
 ## Contributing
@@ -390,8 +375,9 @@ add-stamp/
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature/your-feature`
 3. Make your changes
-4. Build and test: `npm test && npm run build:wasm && npm run dev`
-5. If you touched `wasm/`, bump `version` in `package.json` and `wasm/Cargo.toml`
+4. Build and test: `npm test && npm run build:package && npm run test:package`, then `npm run dev`
+5. If you touched `wasm/` or `packages/image-stamper/`, bump the package version and record the
+   crate version in its CHANGELOG
 6. Commit, push, and open a pull request
 
 ## License

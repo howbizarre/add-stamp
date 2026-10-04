@@ -7,7 +7,7 @@
  * a reader recognises a control before they reach it. Nothing here is a screenshot —
  * screenshots go stale, and they are wrong in one of the two themes.
  */
-const wasmVersion = useRuntimeConfig().public.wasmVersion;
+const engineVersion = useRuntimeConfig().public.engineVersion;
 
 /** Live, so step 03 demonstrates the control instead of picturing it. */
 const demoOpacity = ref(75);
@@ -103,7 +103,7 @@ onMounted(() => {
         <div class="mt-7 flex flex-wrap items-center gap-2">
           <span class="chip">
             <span class="chip-dot bg-teal!"></span>
-            wasm v{{ wasmVersion }}
+            image-stamper v{{ engineVersion }}
           </span>
           <span class="chip">jpg · q75</span>
           <span class="chip">&le; 120 MP per frame</span>
@@ -414,7 +414,7 @@ onMounted(() => {
 
       <div class="panel p-6">
         <dl class="flex flex-col gap-2.5">
-          <div class="kv"><dt>Engine</dt><dd>wasm v{{ wasmVersion }} · Rust</dd></div>
+          <div class="kv"><dt>Engine</dt><dd>@howbizarre/image-stamper v{{ engineVersion }} · Rust / WebAssembly</dd></div>
           <div class="kv"><dt>Output</dt><dd>jpg · quality 75</dd></div>
           <div class="kv"><dt>Stamp padding</dt><dd class="tnum">10 px</dd></div>
           <div class="kv"><dt>Caption colour</dt><dd>#7d7d7d at 50 %</dd></div>

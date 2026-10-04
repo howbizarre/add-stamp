@@ -1,9 +1,8 @@
 import tailwindcss from "@tailwindcss/vite";
 
-// The wasm artifact is published to /wasm/v<version>/, so the client needs the version to
-// build its import URL. Read from package.json rather than duplicated here, which is also
-// what scripts/build-wasm.mjs does when it writes the directory.
-import { version } from "./package.json";
+// The guide shows which engine the site runs. The engine is the npm package, so its version
+// is the one that means something, read from the package rather than duplicated here.
+import engine from "@howbizarre/image-stamper/package.json";
 
 /**
  * Where the site actually lives. Canonical links, Open Graph URLs and the sitemap are all
@@ -82,7 +81,7 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     public: {
-      wasmVersion: version,
+      engineVersion: engine.version,
       siteUrl
     }
   },
@@ -109,31 +108,11 @@ export default defineNuxtConfig({
       routes: ['/', '/how-to-use', '/sitemap.xml'],
       crawlLinks: false,
       failOnError: true
-    },
-
-    // Add proper headers for WASM files.
-    //
-    // The patterns are '**' rather than '*' because the artifact now lives one directory
-    // down, in /wasm/v<version>/, which a single-segment wildcard would not match.
-    //
-    // That versioned directory is also what makes immutable caching safe: the glue JS and
-    // its .wasm move as a pair, so a browser can never pair a cached glue from one deploy
-    // with the .wasm from the next — a wasm-bindgen schema error that is very hard to
-    // diagnose in the field.
-    routeRules: {
-      '/wasm/**/*.wasm': {
-        headers: {
-          'Content-Type': 'application/wasm',
-          'Cache-Control': 'public, max-age=31536000, immutable'
-        }
-      },
-      '/wasm/**/*.js': {
-        headers: {
-          'Content-Type': 'application/javascript',
-          'Cache-Control': 'public, max-age=31536000, immutable'
-        }
-      }
     }
+
+    // No route rules for the engine: Vite bundles @howbizarre/image-stamper and emits its
+    // .wasm as a content-hashed asset under /_nuxt/, which gets the same immutable caching
+    // as every other asset, and Workers static assets serve it as application/wasm.
   },
 
   modules: ['nitro-cloudflare-dev']
