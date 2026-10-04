@@ -10,7 +10,7 @@ rust-version = "1.91"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-wasm-bindgen = "0.2.128"
+wasm-bindgen = "0.2.129"
 # default-features = false only takes effect now that imageproc is gone: imageproc depended
 # on image with default features, and Cargo unions features across the whole graph, so an
 # AV1 encoder, OpenEXR, TIFF, GIF and QOI were compiled into the wasm binary regardless.
@@ -21,11 +21,11 @@ ab_glyph = "0.2"
 # to_rgba8 discards it, so without this a portrait photo is stamped sideways.
 kamadak-exif = "0.6"
 
-# The wasm-opt that wasm-pack 0.13 downloads is Binaryen 117, which validates against an
-# older default feature set than rustc 1.91 emits. Passing an explicit flag list replaces
-# wasm-pack's defaults, so every feature the toolchain actually uses has to be named here or
-# the build dies with "error validating input". simd128 comes from .cargo/config.toml; the
-# rest are what rustc emits for wasm32-unknown-unknown as standard.
+# The wasm-opt that wasm-pack 0.13 through 0.15 downloads is Binaryen 117, which validates
+# against an older default feature set than rustc 1.91 emits. Passing an explicit flag list
+# replaces wasm-pack's defaults, so every feature the toolchain actually uses has to be named
+# here or the build dies with "error validating input". simd128 comes from .cargo/config.toml;
+# the rest are what rustc emits for wasm32-unknown-unknown as standard.
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = [
   '-O3',
