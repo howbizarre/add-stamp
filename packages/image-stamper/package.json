@@ -1,5 +1,5 @@
 {
-  "name": "image-stamper",
+  "name": "@howbizarre/image-stamper",
   "version": "0.1.0",
   "description": "Watermark photos in Rust/WebAssembly, in the browser or in Node: scale a PNG mark to fit each frame, composite it centred at any opacity, caption it, and re-encode as JPEG or WebP. Nothing leaves the machine.",
   "keywords": [
@@ -32,6 +32,9 @@
     "url": "https://github.com/howbizarre"
   },
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "sideEffects": false,
   "exports": {

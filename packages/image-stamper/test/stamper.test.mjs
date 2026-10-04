@@ -14,7 +14,7 @@ import {
   isWasmReady,
   packColor,
   unpackColor
-} from 'image-stamper';
+} from '@howbizarre/image-stamper';
 
 import { jpegDimensions, webpDimensions } from './helpers/dimensions.mjs';
 

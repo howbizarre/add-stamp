@@ -1,5 +1,5 @@
 /**
- * image-stamper — the browser and bundler entry.
+ * @howbizarre/image-stamper — the browser and bundler entry.
  *
  * `createImageStamper()` with no arguments lets the generated glue find the `.wasm` next to
  * itself with `new URL('image_stamper_bg.wasm', import.meta.url)`. Browsers resolve that

@@ -7,7 +7,7 @@
 - **The engine as an npm package.** [`packages/image-stamper`](packages/image-stamper) wraps the
   wasm-bindgen output in a typed API — `createImageStamper()`, `setStamp`, `stamp`, options as a
   plain object with CSS hex colours, a result that knows its MIME type — and is published as
-  `image-stamper`. One entry for browsers and bundlers, where the glue finds the `.wasm` next to
+  `@howbizarre/image-stamper`. One entry for browsers and bundlers, where the glue finds the `.wasm` next to
   itself, and one for Node, which reads it from disk because Node's `fetch` rejects `file:` URLs.
   Built from the crate in `wasm/` by its own script, tested end-to-end with `node --test` against
   the packed layout. The app does not consume the package yet; it still loads `public/wasm/`.
@@ -36,6 +36,14 @@
 
 ### Changed
 
+- **The embedded font is renamed, as its licence requires.** `wasm/src/Ubuntu-M-subset.ttf`
+  is now *Ubuntu Medium derivative Image Stamper*. The Ubuntu Font Licence 1.0 treats a subset
+  as a Modified Version, and condition 2(c) wants the original name with "derivative X"
+  appended; the old `FONT-LICENSE.md` had reasoned that the repository was private, which it
+  is not, and the binary now ships on npm as well. Outlines, metrics and kerning are untouched,
+  so the caption renders identically. `scripts/font-subset.py` regenerates the file, subset
+  and rename in one step, from `app/assets/fonts/Ubuntu-M.ttf`, which the note had wrongly
+  said was gone.
 - **`Reset all` appears as soon as the page differs from how it loaded** — a frame added, a
   stamp picked, an opacity dragged — instead of only after a finished run. It was the one
   control that could not undo the state it was hidden behind.

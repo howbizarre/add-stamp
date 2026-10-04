@@ -1,9 +1,9 @@
 # Embedded font
 
-`image_stamper_bg.wasm` embeds a subset of **Ubuntu Medium** (`Ubuntu-M.ttf`, version 0.80,
-Dalton Maag Ltd for Canonical Ltd). It is used only to rasterize the caption that `stamp()`
-draws along the bottom edge of a frame, and is not distributed as a separate file in this
-package.
+`image_stamper_bg.wasm` embeds **Ubuntu Medium derivative Image Stamper**: a subset of Ubuntu
+Medium (`Ubuntu-M.ttf`, version 0.80, Dalton Maag Ltd for Canonical Ltd), renamed as its
+licence requires. It is used only to rasterize the caption that `stamp()` draws along the
+bottom edge of a frame, and is not distributed as a separate file in this package.
 
 ```
 Copyright 2011 Canonical Ltd. Licensed under the Ubuntu Font Licence 1.0
@@ -12,11 +12,13 @@ Ubuntu and Canonical are registered trademarks of Canonical Ltd.
 
 ## What was changed
 
-The embedded file is a derivative of the upstream face. Character coverage was reduced to
-Latin-1, Latin Extended-A/B, Cyrillic and common punctuation, and the GPOS, GSUB, hinting
-and several other tables were removed, to keep the binary small. The retained glyph
-outlines, metrics and kerning values are unchanged. The font's own `name` table, carrying
-the notices above, travels inside the binary.
+The embedded file is a Modified Version of the upstream face. Character coverage was reduced
+to Latin-1, Latin Extended-A/B, Cyrillic and common punctuation, and the GPOS, GSUB, hinting
+and several metadata tables were removed, to keep the binary small. The retained glyph
+outlines, metrics and kerning values are unchanged. As condition 2(c) of the licence requires
+of a Modified Version that is not substantially changed, the face was renamed: the original
+name with "derivative Image Stamper" appended. The font's `name` table, carrying the
+copyright and trademark notices above and the new name, travels inside the binary.
 
 ## Ubuntu Font Licence 1.0
 

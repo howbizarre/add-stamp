@@ -23,9 +23,10 @@ use wasm_bindgen::prelude::*;
 
 /// Embedded so the watermark renders identically regardless of the fonts a client has.
 ///
-/// A subset of Ubuntu-M, and by far the largest single item in the wasm binary even so —
-/// font data is incompressible and passes through `wasm-opt` untouched. The full face was
-/// 341 324 B; this is 77 480 B.
+/// A subset of Ubuntu Medium, renamed *Ubuntu Medium derivative Image Stamper* as the Ubuntu
+/// Font Licence requires of a modified version, and by far the largest single item in the
+/// wasm binary even so — font data is incompressible and passes through `wasm-opt` untouched.
+/// The full face is 341 324 B; this is 78 188 B.
 ///
 /// What the subset keeps and why:
 ///
@@ -39,17 +40,11 @@ use wasm_bindgen::prelude::*;
 /// What it drops: GPOS and GSUB (unused by `ab_glyph`; 94 KB), hinting (`ab_glyph`
 /// rasterizes without it), and the `DSIG`/`VDMX`/`LTSH`/`hdmx` metadata tables.
 ///
-/// Regenerate with, from the repository root:
-///
-/// ```text
-/// pyftsubset Ubuntu-M.ttf --output-file=wasm/src/Ubuntu-M-subset.ttf \
-///   --unicodes="U+0000-00FF,U+0100-024F,U+0400-04FF,U+2010-2027,U+20AC" \
-///   --layout-features='' --legacy-kern --no-hinting \
-///   --drop-tables+=DSIG,VDMX,LTSH,hdmx,GPOS,GSUB --name-IDs='*'
-/// ```
-///
-/// `--name-IDs='*'` preserves the `name` table, which carries the Ubuntu Font Licence notice.
-/// See `wasm/src/FONT-LICENSE.md`.
+/// Regenerate with `python scripts/font-subset.py` from the repository root (it needs
+/// `pip install fonttools`). The script reads `app/assets/fonts/Ubuntu-M.ttf`, applies the
+/// ranges and table drops above, and rewrites the `name` table for the derivative name while
+/// keeping the copyright and trademark records, which is what carries the Ubuntu Font Licence
+/// notice into the binary. The licence reasoning is in `wasm/src/FONT-LICENSE.md`.
 static FONT_DATA: &[u8] = include_bytes!("./Ubuntu-M-subset.ttf");
 
 /// The shipped values for every [`StampOptions`] field.

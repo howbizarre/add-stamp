@@ -25,9 +25,10 @@ SOFTWARE.
 The WebAssembly binary in this package is compiled from Rust and embeds a font. Their
 licences are separate from the MIT licence above and ship with the package:
 
-- **Ubuntu font.** The binary embeds a subset of Ubuntu Medium (Dalton Maag Ltd for
-  Canonical Ltd), used only to rasterize the caption. Copyright 2011 Canonical Ltd, licensed
-  under the Ubuntu Font Licence 1.0. The notice and the full licence text are in
+- **Ubuntu font.** The binary embeds *Ubuntu Medium derivative Image Stamper*, a subset of
+  Ubuntu Medium (Dalton Maag Ltd for Canonical Ltd) renamed as its licence requires, used
+  only to rasterize the caption. Copyright 2011 Canonical Ltd, licensed under the Ubuntu
+  Font Licence 1.0. The notice and the full licence text are in
   [FONT-LICENSE.md](./FONT-LICENSE.md).
 - **Rust crates.** The 32 crates linked into the binary, each with the licence it is used
   under and that licence's text, are listed in

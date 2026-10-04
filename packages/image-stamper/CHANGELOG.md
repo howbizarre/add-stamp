@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to the `image-stamper` npm package. The Rust crate it is built from has
+All notable changes to the `@howbizarre/image-stamper` npm package. The Rust crate it is built from has
 its own history in the repository's top-level
 [CHANGELOG.md](https://github.com/howbizarre/add-stamp/blob/master/CHANGELOG.md).
 
@@ -20,11 +20,12 @@ First release, built from crate `image-stamper` 2.1.2.
 - Separate Node entry (the `node` export condition) that reads the `.wasm` from disk, since
   Node's `fetch` does not accept `file:` URLs. Browsers and bundlers get the standard
   `new URL('image_stamper_bg.wasm', import.meta.url)` resolution.
-- `image-stamper/wasm` exposes the raw wasm-bindgen bindings, and
-  `image-stamper/image_stamper_bg.wasm` the binary, for hosting setups that need them.
+- `@howbizarre/image-stamper/wasm` exposes the raw wasm-bindgen bindings, and
+  `@howbizarre/image-stamper/image_stamper_bg.wasm` the binary, for hosting setups that need them.
 - `FONT-LICENSE.md` with the Ubuntu Font Licence and `THIRD-PARTY-LICENSES.md` with the licence
   of every Rust crate compiled into the binary, generated from `Cargo.lock`, both shipped in the
-  tarball.
+  tarball. The embedded font is *Ubuntu Medium derivative Image Stamper*, a subset of Ubuntu
+  Medium renamed as that licence requires.
 - Clear errors for a module that is not instantiated yet, a stamper that has been freed, an
   unknown format, a non-numeric option, an integer option that would wrap at the boundary,
   and a colour that is not CSS hex.

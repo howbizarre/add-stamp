@@ -15,7 +15,7 @@ and no account.
 > Measurements and the open encoder decision live in [docs/PERFORMANCE.md](docs/PERFORMANCE.md).
 
 > **📦 Use the engine in your own project**: the pipeline is published to npm as
-> [`image-stamper`](packages/image-stamper) (`npm install image-stamper`), with a typed API for
+> [`@howbizarre/image-stamper`](packages/image-stamper) (`npm install @howbizarre/image-stamper`), with a typed API for
 > browsers, bundlers and Node. Its README is in [packages/image-stamper](packages/image-stamper/README.md).
 
 ## What it does

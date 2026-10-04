@@ -1,5 +1,5 @@
 /**
- * image-stamper — the Node entry, selected by the `node` export condition.
+ * @howbizarre/image-stamper — the Node entry, selected by the `node` export condition.
  *
  * Identical to ./index.js except that, when no `wasm` is given, the `.wasm` is read from
  * disk. The generated glue's default is to `fetch` a URL relative to `import.meta.url`,

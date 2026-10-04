@@ -10,7 +10,7 @@ memory-safe Rust (there is no `unsafe` anywhere in the crate) inside the WebAsse
 For the application around it — the interface, the batch flow, deployment — see
 [README.md](README.md).
 
-The same crate is published to npm as [`image-stamper`](packages/image-stamper/README.md), with a
+The same crate is published to npm as [`@howbizarre/image-stamper`](packages/image-stamper/README.md), with a
 typed wrapper for browsers and Node. [`packages/image-stamper/scripts/build.mjs`](packages/image-stamper/scripts/build.mjs)
 builds it from this directory; the app itself still loads the artifact from `public/wasm/`.
 
@@ -180,22 +180,23 @@ exported method.
 
 ## The font
 
-`src/Ubuntu-M-subset.ttf` is a subset of Ubuntu-M, embedded so the watermark renders
+`src/Ubuntu-M-subset.ttf` is *Ubuntu Medium derivative Image Stamper*, a subset of Ubuntu Medium renamed as its
+licence requires, embedded so the watermark renders
 identically regardless of what fonts a client has. Font data is incompressible and passes
 through `wasm-opt` untouched, so it is the largest single item in the binary even subsetted:
-the full face was 341 324 B, this is 77 480 B.
+the full face was 341 324 B, this is 78 188 B.
 
 It keeps Latin-1, Latin Extended-A/B and the full Cyrillic block, plus the legacy `kern`
 table — `pyftsubset` drops that in favour of GPOS by default, which `ab_glyph` never reads,
-so dropping it would have silently disabled kerning. The regeneration command is in the
-doc comment on `FONT_DATA` in `lib.rs`.
+so dropping it would have silently disabled kerning. `scripts/font-subset.py` regenerates it, subset and
+rename in one step, from `app/assets/fonts/Ubuntu-M.ttf`.
 
 The font is licensed under the [Ubuntu Font Licence](wasm/src/FONT-LICENSE.md), separately
 from this project's MIT licence.
 
 ## Binary size
 
-The artifact is ~933 KB. Most of what keeps it there:
+The artifact is ~934 KiB (956 kB). Most of what keeps it there:
 
 - `image` with `default-features = false` and only `png`, `jpeg` and `webp`. This only takes
   effect because `imageproc` is gone: it depended on `image` with default features, and Cargo

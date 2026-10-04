@@ -1,4 +1,4 @@
-# image-stamper
+# @howbizarre/image-stamper
 
 Watermark photos in Rust/WebAssembly, in the browser or in Node. Give it a PNG mark once,
 then hand it photos: each one comes back uprighted, with the mark scaled to fit and
@@ -19,12 +19,12 @@ memory-safe Rust (no `unsafe` anywhere in the crate) inside the WebAssembly sand
   renders identically everywhere.
 - Refuses oversized images from their header, before any pixel buffer exists, so one bad
   file cannot take down a batch.
-- One `.wasm` of about 955 KB (933 KiB), no native dependencies, no server.
+- One `.wasm` of about 956 KB (934 KiB), no native dependencies, no server.
 
 ## Install
 
 ```bash
-npm install image-stamper
+npm install @howbizarre/image-stamper
 ```
 
 Node 20 or newer. The type declarations need TypeScript 5.7 or newer. They mention
@@ -37,7 +37,7 @@ carries itself. A Node-only project without the DOM lib should leave `skipLibChe
 ### In the browser or with a bundler
 
 ```ts
-import { createImageStamper } from 'image-stamper';
+import { createImageStamper } from '@howbizarre/image-stamper';
 
 const stamper = await createImageStamper();
 
@@ -67,7 +67,7 @@ is; see [Where the `.wasm` comes from](#where-the-wasm-comes-from).
 
 ```ts
 import { readFile, writeFile } from 'node:fs/promises';
-import { createImageStamper } from 'image-stamper';
+import { createImageStamper } from '@howbizarre/image-stamper';
 
 const stamper = await createImageStamper();
 
@@ -91,7 +91,7 @@ same entry.
 `import.meta.url`, which stops being true once a bundler inlines the package into your
 server build (Vite `ssr.noExternal`, esbuild with `--bundle --platform=node`, a CJS bundle
 for a serverless function). Either keep the package external (`ssr.external`,
-`--external:image-stamper`; Nitro externalises dependencies by default), or pass the bytes
+`--external:@howbizarre/image-stamper`; Nitro externalises dependencies by default), or pass the bytes
 yourself:
 
 ```ts
@@ -100,7 +100,7 @@ import { readFile } from 'node:fs/promises';
 
 const require = createRequire(import.meta.url);
 const stamper = await createImageStamper({
-  wasm: readFile(require.resolve('image-stamper/image_stamper_bg.wasm'))
+  wasm: readFile(require.resolve('@howbizarre/image-stamper/image_stamper_bg.wasm'))
 });
 ```
 
@@ -211,9 +211,9 @@ The instance stays usable after any of these. A photo that fails does not affect
 | `isWasmReady()` | Whether the module is instantiated. |
 | `toBytes(source)`, `toBytesSync(source)` | The input conversion used internally: anything accepted as an image to a `Uint8Array`, without copying where possible. |
 
-The raw wasm-bindgen bindings are available from `image-stamper/wasm` (`ImageStamper`,
+The raw wasm-bindgen bindings are available from `@howbizarre/image-stamper/wasm` (`ImageStamper`,
 `StampOptions`, `OutputFormat`, `default` as the init function, `initSync`), and the binary
-itself from `image-stamper/image_stamper_bg.wasm`.
+itself from `@howbizarre/image-stamper/image_stamper_bg.wasm`.
 
 ## Where the `.wasm` comes from
 
@@ -230,7 +230,7 @@ its URL:
 
 ```ts
 // esbuild --bundle --format=esm --loader:.wasm=file
-import wasmUrl from 'image-stamper/image_stamper_bg.wasm';
+import wasmUrl from '@howbizarre/image-stamper/image_stamper_bg.wasm';
 
 const stamper = await createImageStamper({ wasm: wasmUrl });
 ```
@@ -245,14 +245,14 @@ package out of pre-bundling:
 ```ts
 // vite.config.ts
 export default defineConfig({
-  optimizeDeps: { exclude: ['image-stamper'] }
+  optimizeDeps: { exclude: ['@howbizarre/image-stamper'] }
 });
 ```
 
 or pass the URL explicitly, which works in dev and in the build alike:
 
 ```ts
-import wasmUrl from 'image-stamper/image_stamper_bg.wasm?url';
+import wasmUrl from '@howbizarre/image-stamper/image_stamper_bg.wasm?url';
 
 const stamper = await createImageStamper({ wasm: wasmUrl });
 ```
@@ -271,7 +271,7 @@ the binary as a module and pass it in. Wrangler resolves the subpath through the
 exports map and bundles it as a compiled module:
 
 ```ts
-import wasm from 'image-stamper/image_stamper_bg.wasm'; // a WebAssembly.Module under wrangler
+import wasm from '@howbizarre/image-stamper/image_stamper_bg.wasm'; // a WebAssembly.Module under wrangler
 
 const stamper = await createImageStamper({ wasm });
 ```
@@ -308,9 +308,10 @@ runs unchanged inside a worker; post the files in and the results out. `bytes` i
 4. **Opacity is applied at composite time**, multiplied into the mark's own alpha.
 5. **The caption** is drawn centred along the bottom edge at `textSizeRatio` of the frame's
    shorter side, clamped between `textSizeMin` and `textSizeMax`, in `textColor`, from an
-   embedded subset of Ubuntu Medium with real kerning. Latin-1, Latin Extended-A/B and
-   Cyrillic are covered, with the common punctuation (dashes, curly quotes, ellipsis,
-   bullet) and the euro sign. A character outside that set is not drawn and leaves a gap of
+   embedded subset of Ubuntu Medium (renamed *Ubuntu Medium derivative Image Stamper*, as
+   its licence requires) with real kerning. Latin-1, Latin Extended-A/B and Cyrillic are
+   covered, with the common punctuation (dashes, curly quotes, ellipsis, bullet) and the
+   euro sign. A character outside that set is not drawn and leaves a gap of
    one glyph width.
 6. **Encoding.** JPEG at `quality`, with translucent pixels composited onto `jpegMatte`
    first, because JPEG has no alpha channel. WebP is lossless, keeps alpha, and ignores
@@ -352,7 +353,8 @@ repository; the crate version each release was built from is recorded in
 
 ## Licence
 
-MIT for the package's own code; see [LICENSE.md](./LICENSE.md). The binary embeds a subset of
-Ubuntu Medium under the [Ubuntu Font Licence 1.0](https://ubuntu.com/legal/font-licence),
-whose notice and full text are in [FONT-LICENSE.md](./FONT-LICENSE.md), and 32 Rust crates
-whose licences are collected in [THIRD-PARTY-LICENSES.md](./THIRD-PARTY-LICENSES.md).
+MIT for the package's own code; see [LICENSE.md](./LICENSE.md). The binary embeds *Ubuntu
+Medium derivative Image Stamper*, a renamed subset of Ubuntu Medium under the
+[Ubuntu Font Licence 1.0](https://ubuntu.com/legal/font-licence), whose notice and full text
+are in [FONT-LICENSE.md](./FONT-LICENSE.md), and 32 Rust crates whose licences are collected
+in [THIRD-PARTY-LICENSES.md](./THIRD-PARTY-LICENSES.md).

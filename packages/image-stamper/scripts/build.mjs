@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Builds the `image-stamper` npm package.
+ * Builds the `@howbizarre/image-stamper` npm package.
  *
  * Two steps, each runnable on its own:
  *

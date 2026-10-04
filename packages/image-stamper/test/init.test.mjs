@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { describe, it } from 'node:test';
 
-import { ImageStamper, createImageStamper, defaultOptions, initWasm, initWasmSync, isWasmReady } from 'image-stamper';
+import { ImageStamper, createImageStamper, defaultOptions, initWasm, initWasmSync, isWasmReady } from '@howbizarre/image-stamper';
 
 const wasmPath = new URL('../wasm/image_stamper_bg.wasm', import.meta.url);
 

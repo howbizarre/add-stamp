@@ -153,7 +153,7 @@ let ready = false;
 
 /**
  * The glue is a module-level singleton that a consumer can also initialise through the
- * raw `image-stamper/wasm` entry, in which case this wrapper's flag was never set. Probing
+ * raw `@howbizarre/image-stamper/wasm` entry, in which case this wrapper's flag was never set. Probing
  * the glue once (a constructor call fails with a TypeError while its exports are undefined)
  * keeps the two in agreement.
  */

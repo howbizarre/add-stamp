@@ -1,4 +1,4 @@
-// A consumer may instantiate the module through the raw bindings that `image-stamper/wasm`
+// A consumer may instantiate the module through the raw bindings that `@howbizarre/image-stamper/wasm`
 // exposes. The wrapper shares that module instance and has to notice. Own process, so the
 // module starts uninstantiated.
 
@@ -6,15 +6,15 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 
-import * as raw from 'image-stamper/wasm';
-import { ImageStamper, defaultOptions, initWasm, isWasmReady } from 'image-stamper';
+import * as raw from '@howbizarre/image-stamper/wasm';
+import { ImageStamper, defaultOptions, initWasm, isWasmReady } from '@howbizarre/image-stamper';
 
 describe('instantiation through the raw bindings', () => {
   it('is detected by the wrapper', async () => {
     assert.equal(isWasmReady(), false);
 
     for (const name of ['ImageStamper', 'StampOptions', 'OutputFormat', 'initSync', 'default']) {
-      assert.ok(name in raw, `image-stamper/wasm exports ${name}`);
+      assert.ok(name in raw, `@howbizarre/image-stamper/wasm exports ${name}`);
     }
 
     const module = new WebAssembly.Module(readFileSync(new URL('../wasm/image_stamper_bg.wasm', import.meta.url)));
