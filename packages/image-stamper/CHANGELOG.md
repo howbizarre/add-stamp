@@ -4,7 +4,7 @@ All notable changes to the `@howbizarre/image-stamper` npm package. The Rust cra
 its own history in the repository's top-level
 [CHANGELOG.md](https://github.com/howbizarre/add-stamp/blob/master/CHANGELOG.md).
 
-## [0.2.0] - Unreleased
+## [0.2.0] - 2026-10-11
 
 Built from crate `image-stamper` 2.2.0.
 
