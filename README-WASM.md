@@ -6,6 +6,8 @@ nothing is uploaded, and originals never leave the device unstamped.
 
 Decoding untrusted image data is a classic memory-corruption surface, so it happens in
 memory-safe Rust (there is no `unsafe` anywhere in the crate) inside the WebAssembly sandbox.
+The resizer `render` uses, `fast_image_resize`, does have `unsafe` for its SIMD intrinsics; it
+only ever sees pixels that are already decoded, at sizes the crate has checked.
 
 For the application around it — the interface, the batch flow, deployment — see
 [README.md](README.md).

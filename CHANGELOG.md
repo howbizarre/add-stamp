@@ -11,6 +11,16 @@
   itself, and one for Node, which reads it from disk because Node's `fetch` rejects `file:` URLs.
   Built from the crate in `wasm/` by its own script, tested end-to-end with `node --test` against
   the packed layout. The app consumes it; see *Changed* below.
+- **Several sizes of a frame from one decode.** `ImageStamper::render` (and `render` in the
+  package) takes up to eight variants, each a `max_size` on the upright frame plus whether it
+  carries the stamp and the caption, and encodes them all from a single decode: largest first,
+  each smaller one resized from a larger one, each resized before it is turned upright, so a
+  portrait rotates a small buffer instead of the full frame. The stamp and the caption are laid
+  out on every output at its final size, and the scaled-stamp cache now holds one stamp per
+  size. A render whose variants all leave the stamp off needs none loaded. `applyStamp` is the
+  one-variant case of the same path and produces the same bytes as before. Built for photo
+  galleries: a stamped preview and thumbnail for the client to choose from, unstamped copies
+  once the photos are delivered.
 - **A user guide at `/how-to-use`.** Five steps, each one paragraph and one illustration,
   alternating sides down the page, then the limits and defaults that the steps have no room
   for. The illustrations are built from the app's own components rather than screenshotted —
@@ -36,6 +46,13 @@
 
 ### Changed
 
+- **Photos are resized with `fast_image_resize`.** Lanczos3 with WebAssembly SIMD128 kernels,
+  for `render`'s variants; the stamp is still scaled by `image`, once per size. Measured in the
+  wasm artifact on a 24 MP frame, a 1920 px and a 400 px output took 368 ms against 875 ms with
+  `imageops::resize`. Averaging whole blocks before Lanczos3 was tried first and dropped: it
+  shifts the picture by up to half a pixel whenever the block size does not divide the frame.
+  The crate itself still has no `unsafe`; this dependency does, for its intrinsics, and it only
+  ever sees pixels that are already decoded, at sizes checked first. The binary grows by 61 KiB.
 - **The app loads the engine from npm.** `useImageStamping` imports `@howbizarre/image-stamper`
   instead of fetching `/wasm/v<version>/image_stamper.js` at runtime, and the raw-binding
   plumbing it carried (building the WASM options handle, packing colours, freeing memory) is

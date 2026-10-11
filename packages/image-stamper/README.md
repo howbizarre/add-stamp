@@ -7,7 +7,9 @@ one, re-encoded as JPEG or WebP. Nothing is uploaded anywhere.
 
 This is the engine behind [Add Stamp](https://stamp.bizarre.how), extracted as a library.
 Decoding untrusted image data is a classic memory-corruption surface, so it happens in
-memory-safe Rust (no `unsafe` anywhere in the crate) inside the WebAssembly sandbox.
+memory-safe Rust (no `unsafe` anywhere in the crate) inside the WebAssembly sandbox. The one
+dependency with hand-written SIMD is the resizer, `fast_image_resize`, and it only ever sees
+pixels that are already decoded, at sizes checked first.
 
 - Scales the mark to the largest size that fits inside the frame with clear padding, then
   centres it. A wide wordmark spans the frame; a square mark fills its height.
@@ -17,9 +19,12 @@ memory-safe Rust (no `unsafe` anywhere in the crate) inside the WebAssembly sand
   sideways.
 - Draws the caption from an embedded font with real kerning, Latin and Cyrillic, so it
   renders identically everywhere.
+- Makes several sizes of a frame from one decode with `render`: a stamped preview, a
+  thumbnail without the caption, a delivery copy without either. The mark is laid out on
+  each at its final size, so it stays crisp on a thumbnail.
 - Refuses oversized images from their header, before any pixel buffer exists, so one bad
   file cannot take down a batch.
-- One `.wasm` of about 956 KB (934 KiB), no native dependencies, no server.
+- One `.wasm` of about 1018 KB (994 KiB), no native dependencies, no server.
 
 ## Install
 
@@ -62,6 +67,30 @@ JavaScript, using `new URL('image_stamper_bg.wasm', import.meta.url)`. Browsers 
 against the module's URL, and Vite production builds and webpack 5 recognise the pattern and
 copy the file into the build as an asset. Rollup and esbuild have to be told where the file
 is; see [Where the `.wasm` comes from](#where-the-wasm-comes-from).
+
+### Several sizes from one decode
+
+A gallery wants each frame at more than one size. `render` decodes the photo once and
+encodes every variant from it, largest first, each smaller one resized from a larger one:
+
+```ts
+const { sourceWidth, sourceHeight, variants } = await stamper.render(file, {
+  caption: 'IMG_0412',
+  variants: [
+    { maxSize: 960 },                  // preview: stamp and caption
+    { maxSize: 400, caption: false }   // thumbnail: stamp only
+  ]
+});
+// variants[0] = { bytes, width: 960, height: 640, format, mimeType, extension }
+
+// Delivery copies carry neither, and need no stamp loaded at all.
+await stamper.render(file, {
+  variants: [
+    { maxSize: 1920, stamp: false, caption: false },
+    { maxSize: 400, stamp: false, caption: false }
+  ]
+});
+```
 
 ### In Node
 
@@ -130,6 +159,8 @@ resize affordable.
 | `setStampSync(bytes, options?)` | The same, for bytes already in hand (no `Blob`). |
 | `stamp(image, options?)` | Uprights, stamps, captions and encodes one image. Resolves to a `StampResult`. Async. |
 | `stampSync(bytes, options?)` | The same, for bytes already in hand. |
+| `render(image, options)` | Decodes once and encodes one image per variant, each at its own size, with or without the stamp and the caption. Resolves to a `RenderResult`. Async. |
+| `renderSync(bytes, options)` | The same, for bytes already in hand. |
 | `hasStamp` | Whether `setStamp` has succeeded. |
 | `stampWidth`, `stampHeight` | The mark's size in pixels, or 0 if none is loaded. |
 | `free()` | Releases the WebAssembly memory. Safe to call twice; every other member throws afterwards. Also available as `[Symbol.dispose]`, so `using stamper = await createImageStamper()` works where the runtime supports it. |
@@ -166,11 +197,22 @@ cannot break the instance.
 | `textPaddingMin` | `10` | Floor on that gap, in pixels. |
 | `textColor` | `'#7d7d7d80'` | Caption colour. Alpha is honoured. |
 
-`stamp()` and `stampSync()` take one more:
+`stamp()`, `render()` and their sync forms take one more:
 
 | Option | Default | Meaning |
 | --- | --- | --- |
 | `caption` | `''` | Text drawn centred along the bottom edge, typically the filename without its extension. Empty draws nothing. |
+
+`render()` and `renderSync()` also take `variants`, an array of one to eight outputs:
+
+| Field | Default | Meaning |
+| --- | --- | --- |
+| `maxSize` | `0` | Longer side in pixels, measured on the upright frame. A frame already within it keeps its size, so nothing is upscaled; `0` keeps the source size. |
+| `stamp` | `true` | Composite the mark. A render whose variants all leave it off needs no `setStamp`. |
+| `caption` | `true` | Draw the caption, when the call has one. |
+
+Every other option applies to all variants. `stampPadding` and the caption size are measured
+against each output, not the source, because that is where the mark is laid out.
 
 Colours are CSS hex: `#rgb`, `#rgba`, `#rrggbb` or `#rrggbbaa`, with or without the `#`. A
 colour that is not valid hex throws rather than falling back to a default, because a
@@ -185,18 +227,31 @@ fractional or above 4294967295 throws a `RangeError`, and an unknown `format` th
 | Field | Meaning |
 | --- | --- |
 | `bytes` | The encoded image as a `Uint8Array<ArrayBuffer>`. A fresh copy out of WebAssembly memory, so it can go straight into `new Blob([bytes])`, `new File([bytes], ...)` or `fs.writeFile`. |
+| `width`, `height` | The size of the encoded image in pixels. |
+| `sourceWidth`, `sourceHeight` | The size of the source after EXIF orientation; for `stamp()` the same as `width` and `height`. |
 | `format` | `'jpeg'` or `'webp'`. |
 | `mimeType` | `'image/jpeg'` or `'image/webp'`. |
 | `extension` | `'jpg'` or `'webp'`. |
+
+### `RenderResult`
+
+| Field | Meaning |
+| --- | --- |
+| `sourceWidth`, `sourceHeight` | The size of the source after EXIF orientation, as the viewer sees it. |
+| `variants` | One image per variant, in the order the variants were given, each with `bytes`, `width`, `height`, `format`, `mimeType` and `extension` as in `StampResult`. |
 
 ### Errors
 
 Errors are real `Error` objects with a message that names the problem:
 
-- `Stamp not set`: `stamp()` was called before a successful `setStamp()`.
+- `Stamp not set`: `stamp()` was called before a successful `setStamp()`, or `render()` has
+  a variant that asks for the stamp.
+- `Expected 1 to 8 variants, got 0`: `render()` with no variants, or more than eight.
 - `Image is too large: 9000x6000 is 54 MP, the limit is 40 MP`: over `maxMegapixels`.
 - `Failed to load image: ...`: not a readable PNG, JPEG or WebP, or over `maxDimension`.
 - `Failed to encode image: ...`: the encoder rejected the finished image.
+- `Failed to resize image: ...`: the resizer refused a frame. Not expected; the sizes are
+  checked before it runs.
 
 The instance stays usable after any of these. A photo that fails does not affect the next.
 
@@ -313,7 +368,10 @@ runs unchanged inside a worker; post the files in and the results out. `bytes` i
    covered, with the common punctuation (dashes, curly quotes, ellipsis, bullet) and the
    euro sign. A character outside that set is not drawn and leaves a gap of
    one glyph width.
-6. **Encoding.** JPEG at `quality`, with translucent pixels composited onto `jpegMatte`
+6. **With `render`, each variant is resized before it is turned upright and stamped**, with
+   Lanczos3, so a portrait rotates a small buffer rather than the full frame and the mark is
+   laid out on the output it lands on.
+7. **Encoding.** JPEG at `quality`, with translucent pixels composited onto `jpegMatte`
    first, because JPEG has no alpha channel. WebP is lossless, keeps alpha, and ignores
    `quality`; a WebP of an already-compressed photo is often larger than the JPEG.
 
@@ -339,7 +397,10 @@ Measured inside the WebAssembly artifact on a 24 MP (6000x4000) frame, under V8:
 | Encode JPEG q75 | ~63 % |
 
 About 2.5 seconds per frame in total on a desktop machine; proportionally less for smaller
-frames. The binary is compiled with 128-bit SIMD, which every browser since Chrome 91,
+frames. `render` is much cheaper when the outputs are smaller than the frame, because the
+encoder only sees their pixels. On the machine `render` was measured on, `stamp()` of a
+24 MP frame took about 0.85 s, a 960 px and a 400 px stamped variant of it about 0.3 s, and
+a 1920 px and a 400 px unstamped one about 0.37 s, most of it decoding. The binary is compiled with 128-bit SIMD, which every browser since Chrome 91,
 Firefox 89 and Safari 16.4 supports. See the repository's
 [docs/PERFORMANCE.md](https://github.com/howbizarre/add-stamp/blob/master/docs/PERFORMANCE.md)
 for the measurements.
@@ -356,5 +417,5 @@ repository; the crate version each release was built from is recorded in
 MIT for the package's own code; see [LICENSE.md](./LICENSE.md). The binary embeds *Ubuntu
 Medium derivative Image Stamper*, a renamed subset of Ubuntu Medium under the
 [Ubuntu Font Licence 1.0](https://ubuntu.com/legal/font-licence), whose notice and full text
-are in [FONT-LICENSE.md](./FONT-LICENSE.md), and 32 Rust crates whose licences are collected
+are in [FONT-LICENSE.md](./FONT-LICENSE.md), and 34 Rust crates whose licences are collected
 in [THIRD-PARTY-LICENSES.md](./THIRD-PARTY-LICENSES.md).

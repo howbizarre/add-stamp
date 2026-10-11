@@ -361,8 +361,9 @@ add-stamp/
 ## Technology stack
 
 - **Frontend**: Nuxt 4 (prerendered, then client-side), Vue 3, TypeScript, Tailwind CSS 4
-- **Image processing**: Rust compiled to WebAssembly, with `simd128`, and no `unsafe` anywhere,
-  consumed as the npm package `@howbizarre/image-stamper`
+- **Image processing**: Rust compiled to WebAssembly, with `simd128`, and no `unsafe` in the
+  crate, consumed as the npm package `@howbizarre/image-stamper`; photos are resized with
+  `fast_image_resize`, whose SIMD kernels are the one place intrinsics come in
 - **Image libraries**: the `image` crate with only `png`, `jpeg` and `webp`; `kamadak-exif`
   for orientation
 - **Text rendering**: `ab_glyph`, with per-glyph advances and kerning

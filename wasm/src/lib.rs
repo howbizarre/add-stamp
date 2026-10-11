@@ -14,11 +14,13 @@ pub mod blend;
 pub mod error;
 pub mod layout;
 pub mod orientation;
+pub mod resize;
 pub mod text;
 
 use ab_glyph::{FontRef, PxScale};
 use error::StampError;
 use image::{Rgba, RgbaImage, imageops};
+use std::cmp::Reverse;
 use wasm_bindgen::prelude::*;
 
 /// Embedded so the watermark renders identically regardless of the fonts a client has.
@@ -121,6 +123,13 @@ const MAX_TEXT_DIMENSION: f32 = 100_000.0;
 /// Largest megapixel budget that still fits `u32::MAX` pixels, so the cap can never be
 /// higher than a dimension pair could reach.
 const MAX_MEGAPIXEL_BUDGET: f32 = 4295.0;
+
+/// Most variants one [`ImageStamper::render`] call produces.
+///
+/// A gallery needs two or three sizes of a frame. The cap keeps a mistaken loop on the
+/// JavaScript side from encoding hundreds of copies of a 24 MP frame in one call, and bounds
+/// the scaled-stamp cache, which holds one stamp per output size.
+pub const MAX_VARIANTS: usize = 8;
 
 /// Routes Rust panics to `console.error` with a readable stack trace instead of surfacing
 /// them as a bare `unreachable` trap.
@@ -301,6 +310,121 @@ impl StampOptions {
     }
 }
 
+/// One output of [`ImageStamper::render`]: how large it is, and whether it carries the stamp
+/// and the caption.
+///
+/// ```js
+/// const thumbnail = new Variant();
+/// thumbnail.max_size = 400;
+/// thumbnail.caption = false;
+/// ```
+#[wasm_bindgen]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Variant {
+    /// Longer side in pixels, after EXIF orientation. A frame already within it keeps its
+    /// size, so nothing is ever upscaled; 0 keeps the source size.
+    pub max_size: u32,
+
+    /// Composite the stamp. A call whose variants all leave it off needs no stamp loaded.
+    pub stamp: bool,
+
+    /// Draw the caption, when the call was given one.
+    pub caption: bool,
+}
+
+impl Default for Variant {
+    /// The source size, stamped and captioned: what `applyStamp` produces.
+    fn default() -> Self {
+        Self {
+            max_size: 0,
+            stamp: true,
+            caption: true,
+        }
+    }
+}
+
+#[wasm_bindgen]
+impl Variant {
+    /// The source size, stamped and captioned. Assign the fields that need to differ.
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> Variant {
+        Variant::default()
+    }
+}
+
+/// One encoded output of [`ImageStamper::render`].
+#[derive(Clone, Debug, PartialEq)]
+pub struct RenderedImage {
+    pub width: u32,
+    pub height: u32,
+    pub bytes: Vec<u8>,
+}
+
+/// What one [`ImageStamper::render`] call produced: the upright size of the source, and one
+/// image per variant, in the order the variants were given.
+#[wasm_bindgen]
+#[derive(Debug)]
+pub struct Rendering {
+    source_width: u32,
+    source_height: u32,
+    images: Vec<RenderedImage>,
+}
+
+#[wasm_bindgen]
+impl Rendering {
+    /// Width of the source after EXIF orientation, as the viewer sees it.
+    #[wasm_bindgen(getter, js_name = "sourceWidth")]
+    pub fn source_width(&self) -> u32 {
+        self.source_width
+    }
+
+    /// Height of the source after EXIF orientation, as the viewer sees it.
+    #[wasm_bindgen(getter, js_name = "sourceHeight")]
+    pub fn source_height(&self) -> u32 {
+        self.source_height
+    }
+
+    /// Number of images, one per variant.
+    #[wasm_bindgen(getter)]
+    pub fn count(&self) -> u32 {
+        self.images.len() as u32
+    }
+
+    /// Width of the image at `index`, or `undefined` past the end.
+    pub fn width(&self, index: u32) -> Option<u32> {
+        self.images.get(index as usize).map(|image| image.width)
+    }
+
+    /// Height of the image at `index`, or `undefined` past the end.
+    pub fn height(&self, index: u32) -> Option<u32> {
+        self.images.get(index as usize).map(|image| image.height)
+    }
+
+    /// Moves the encoded bytes of the image at `index` out, leaving it empty, or returns
+    /// `undefined` past the end.
+    ///
+    /// A move rather than a copy: the glue copies the bytes into JavaScript anyway, so a
+    /// second copy here would only hold WebAssembly memory until `free()`.
+    #[wasm_bindgen(js_name = "takeBytes")]
+    pub fn take_bytes(&mut self, index: u32) -> Option<Vec<u8>> {
+        self.images
+            .get_mut(index as usize)
+            .map(|image| std::mem::take(&mut image.bytes))
+    }
+}
+
+impl Rendering {
+    /// The images, for native callers.
+    pub fn images(&self) -> &[RenderedImage] {
+        &self.images
+    }
+
+    /// The images, owned.
+    pub fn into_images(self) -> Vec<RenderedImage> {
+        self.images
+    }
+}
+
 /// The stamp resized for one particular target size.
 ///
 /// Every frame in a batch usually shares dimensions, so caching this turns a Lanczos3 resize
@@ -322,7 +446,10 @@ pub struct ImageStamper {
     /// The decoded stamp, kept as a buffer so no per-image copy of the raw bytes is needed.
     stamp: Option<RgbaImage>,
 
-    scaled_stamp: Option<ScaledStamp>,
+    /// One entry per output size seen lately, at most [`MAX_VARIANTS`]: [`Self::render`]
+    /// stamps each frame at several sizes, and a single slot would resize the stamp again for
+    /// every one of them.
+    scaled_stamps: Vec<ScaledStamp>,
 
     /// Parsed once. Re-parsing per image cost a 341 KB copy plus a full TTF table parse on
     /// every photo.
@@ -343,7 +470,7 @@ impl ImageStamper {
 
         ImageStamper {
             stamp: None,
-            scaled_stamp: None,
+            scaled_stamps: Vec::with_capacity(MAX_VARIANTS),
             // The font is embedded at compile time, so a parse failure is a build defect,
             // not a runtime condition a caller could handle.
             font: FontRef::try_from_slice(FONT_DATA).expect("embedded Ubuntu-M subset must be a valid font"),
@@ -393,6 +520,27 @@ impl ImageStamper {
     ) -> Result<Vec<u8>, JsError> {
         Ok(self.stamp_image(image_bytes, filename, *options)?)
     }
+
+    /// Decodes `image_bytes` once and encodes one image per variant: each at its own size,
+    /// with or without the stamp and the caption.
+    ///
+    /// The stamp and the caption are laid out on each output at its final size, so a 400 px
+    /// thumbnail gets a crisp stamp rather than a full-size one shrunk to a smudge, and
+    /// `stamp_padding` and the caption size are measured against that output. `options`
+    /// applies to every variant.
+    ///
+    /// Takes the variants by value: the glue hands their handles over and they cannot be used
+    /// again.
+    #[wasm_bindgen(js_name = "render")]
+    pub fn render(
+        &mut self,
+        image_bytes: &[u8],
+        caption: &str,
+        options: &StampOptions,
+        variants: Vec<Variant>,
+    ) -> Result<Rendering, JsError> {
+        Ok(self.render_image(image_bytes, caption, *options, &variants)?)
+    }
 }
 
 impl ImageStamper {
@@ -403,12 +551,13 @@ impl ImageStamper {
 
         self.stamp = Some(img.to_rgba8());
         // A new stamp invalidates anything scaled from the old one.
-        self.scaled_stamp = None;
+        self.scaled_stamps.clear();
 
         Ok(())
     }
 
-    /// The real implementation, in terms of [`StampError`].
+    /// [`Self::apply_stamp`] in terms of [`StampError`]: one variant at the source size,
+    /// stamped and captioned.
     ///
     /// Public but not exported to JavaScript: this is the entry point integration tests use,
     /// because constructing a `JsValue`/`JsError` off the wasm target aborts the process.
@@ -418,46 +567,161 @@ impl ImageStamper {
         filename: &str,
         options: StampOptions,
     ) -> Result<Vec<u8>, StampError> {
+        let rendering = self.render_image(image_bytes, filename, options, &[Variant::default()])?;
+
+        Ok(rendering
+            .into_images()
+            .pop()
+            .expect("one variant yields one image")
+            .bytes)
+    }
+
+    /// [`Self::render`] in terms of [`StampError`], for native callers.
+    pub fn render_image(
+        &mut self,
+        image_bytes: &[u8],
+        caption: &str,
+        options: StampOptions,
+        variants: &[Variant],
+    ) -> Result<Rendering, StampError> {
         let options = options.normalized();
 
-        if self.stamp.is_none() {
+        if variants.is_empty() || variants.len() > MAX_VARIANTS {
+            return Err(StampError::Variants {
+                count: variants.len(),
+                max: MAX_VARIANTS,
+            });
+        }
+
+        // Before decoding, so a missing stamp costs nothing.
+        if self.stamp.is_none() && variants.iter().any(|variant| variant.stamp) {
             return Err(StampError::StampNotSet);
         }
 
         // Read the orientation before decoding: to_rgba8 discards every trace of EXIF.
         let orientation = orientation::read_orientation(image_bytes);
+        let swaps_axes = orientation.swaps_axes();
 
-        let img = decode_within_limits(image_bytes, &options)?;
+        let decoded = decode_within_limits(image_bytes, &options)?;
+        let has_alpha = decoded.color().has_alpha();
+        let mut source = Some(decoded.into_rgba8());
+        let source_size = source.as_ref().map(RgbaImage::dimensions).expect("just decoded");
+        let (source_width, source_height) = if swaps_axes {
+            (source_size.1, source_size.0)
+        } else {
+            source_size
+        };
 
-        // Upright the frame first, so the stamp and the text are laid out against what the
-        // viewer will actually see. The output carries no EXIF, so this is the only chance.
-        let mut rgba_img = orientation.apply(img.to_rgba8());
-        let img_width = rgba_img.width();
-        let img_height = rgba_img.height();
+        // Each target in the decoded (sensor) orientation: frames are resized before they are
+        // turned upright, so a portrait rotates a 960 px buffer rather than a 96 MB one.
+        let targets: Vec<(u32, u32)> = variants
+            .iter()
+            .map(|variant| {
+                let (width, height) = resize::fit_within(source_width, source_height, variant.max_size);
 
-        self.prepare_scaled_stamp(img_width, img_height, &options)?;
+                if swaps_axes { (height, width) } else { (width, height) }
+            })
+            .collect();
 
-        // Sound: prepare_scaled_stamp either populated this or returned an error.
-        let stamp = self.scaled_stamp.as_ref().expect("scaled stamp was just prepared");
-        let (x_offset, y_offset) = layout::centered_offsets(img_width, img_height, stamp.width, stamp.height);
+        // Largest first, so each smaller target can come from a larger frame already made,
+        // and the source-size ones last, so the final one can take the source itself instead
+        // of a 96 MB copy of it.
+        let mut order: Vec<usize> = (0..variants.len()).collect();
+        order.sort_by_key(|&index| {
+            let (width, height) = targets[index];
 
-        blend::blend_over(&mut rgba_img, &stamp.image, x_offset, y_offset, options.opacity / 100.0);
+            (targets[index] == source_size, Reverse(width.max(height)))
+        });
 
-        if !filename.is_empty() {
-            self.add_text_watermark(&mut rgba_img, filename, &options);
+        // Unstamped frames made so far, in sensor orientation, largest first.
+        let mut made: Vec<RgbaImage> = Vec::new();
+        let mut images: Vec<Option<RenderedImage>> = vec![None; variants.len()];
+
+        for (position, &index) in order.iter().enumerate() {
+            let target = targets[index];
+            let is_last = position + 1 == order.len();
+
+            let frame = if target == source_size {
+                if is_last {
+                    source.take().expect("only the last variant takes the source")
+                } else {
+                    source
+                        .as_ref()
+                        .expect("the source outlives every variant but the last")
+                        .clone()
+                }
+            } else if let Some(frame) = made.iter().rev().find(|frame| frame.dimensions() == target) {
+                frame.clone()
+            } else {
+                // The smallest frame made so far that is still at least twice the target;
+                // anything closer would stack a second Lanczos3 pass's softening on the first.
+                let longer = target.0.max(target.1);
+                let base = made
+                    .iter()
+                    .rev()
+                    .find(|frame| frame.width().max(frame.height()) >= longer.saturating_mul(2))
+                    .or(source.as_ref())
+                    .expect("the source outlives every resized variant");
+
+                resize::downscale(base, target.0, target.1, has_alpha)?
+            };
+
+            // Kept for the smaller variants still to come. Not the source size: the source
+            // itself serves those.
+            if !is_last && target != source_size {
+                made.push(frame.clone());
+            }
+
+            let variant = variants[index];
+            let bytes = self.finish(orientation.apply(frame), caption, variant, &options)?;
+            let (width, height) = if swaps_axes { (target.1, target.0) } else { target };
+
+            images[index] = Some(RenderedImage { width, height, bytes });
         }
 
-        encode_image(rgba_img, &options)
+        Ok(Rendering {
+            source_width,
+            source_height,
+            images: images
+                .into_iter()
+                .map(|image| image.expect("every variant was rendered"))
+                .collect(),
+        })
     }
 
-    /// Ensures `self.scaled_stamp` holds the stamp sized for this image, resizing only on a
-    /// cache miss.
+    /// Stamps and captions an upright frame as `variant` asks, and encodes it.
+    fn finish(
+        &mut self,
+        mut frame: RgbaImage,
+        caption: &str,
+        variant: Variant,
+        options: &StampOptions,
+    ) -> Result<Vec<u8>, StampError> {
+        let (width, height) = frame.dimensions();
+
+        if variant.stamp {
+            let index = self.prepare_scaled_stamp(width, height, options)?;
+            let stamp = &self.scaled_stamps[index];
+            let (x_offset, y_offset) = layout::centered_offsets(width, height, stamp.width, stamp.height);
+
+            blend::blend_over(&mut frame, &stamp.image, x_offset, y_offset, options.opacity / 100.0);
+        }
+
+        if variant.caption && !caption.is_empty() {
+            self.add_text_watermark(&mut frame, caption, options);
+        }
+
+        encode_image(frame, options)
+    }
+
+    /// The index in `self.scaled_stamps` of the stamp sized for this image, resizing only on
+    /// a cache miss. A miss with the cache full evicts the oldest entry.
     fn prepare_scaled_stamp(
         &mut self,
         img_width: u32,
         img_height: u32,
         options: &StampOptions,
-    ) -> Result<(), StampError> {
+    ) -> Result<usize, StampError> {
         let stamp = self.stamp.as_ref().ok_or(StampError::StampNotSet)?;
 
         let scale = layout::contain_scale(
@@ -470,12 +734,12 @@ impl ImageStamper {
         let (width, height) = layout::scaled_size(stamp.width(), stamp.height(), scale);
         let lanczos = scale <= options.lanczos_max_upscale;
 
-        if let Some(cached) = &self.scaled_stamp
-            && cached.width == width
-            && cached.height == height
-            && cached.lanczos == lanczos
+        if let Some(index) = self
+            .scaled_stamps
+            .iter()
+            .position(|cached| cached.width == width && cached.height == height && cached.lanczos == lanczos)
         {
-            return Ok(());
+            return Ok(index);
         }
 
         let filter = if lanczos {
@@ -486,14 +750,18 @@ impl ImageStamper {
 
         let image = imageops::resize(stamp, width, height, filter);
 
-        self.scaled_stamp = Some(ScaledStamp {
+        if self.scaled_stamps.len() == MAX_VARIANTS {
+            self.scaled_stamps.remove(0);
+        }
+
+        self.scaled_stamps.push(ScaledStamp {
             width,
             height,
             lanczos,
             image,
         });
 
-        Ok(())
+        Ok(self.scaled_stamps.len() - 1)
     }
 
     /// Draws `filename` centred along the bottom edge, at a size proportional to the frame.

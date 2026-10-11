@@ -2,6 +2,9 @@
 # 128-bit SIMD is baseline in every browser this app supports (Chrome 91+, Firefox 89+,
 # Safari 16.4+). Enabling it lets LLVM auto-vectorize the blending and flattening loops.
 #
-# Deliberately not hand-written intrinsics: those require `unsafe`, and this crate decodes
-# untrusted image data, so staying entirely safe is worth more than the last few percent.
+# Deliberately not hand-written intrinsics in this crate: those require `unsafe`, and it
+# decodes untrusted image data, so staying entirely safe is worth more than the last few
+# percent. The one exception is a dependency, not this code: `fast_image_resize` brings its
+# own SIMD128 kernels for resizing photos, which were 2.4x faster on a 24 MP frame than
+# `image` (docs/PERFORMANCE.md), and it only ever sees pixels that are already decoded.
 rustflags = ["-C", "target-feature=+simd128"]

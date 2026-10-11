@@ -31,6 +31,12 @@ pub enum StampError {
 
     /// The encoder rejected the finished image.
     Encode(String),
+
+    /// The resizer refused a frame. Not expected: the sizes it is given are checked first.
+    Resize(String),
+
+    /// `render` was given no variants, or more than it produces in one call.
+    Variants { count: usize, max: usize },
 }
 
 impl fmt::Display for StampError {
@@ -53,6 +59,8 @@ impl fmt::Display for StampError {
 
             StampError::Decode(detail) => write!(f, "Failed to load image: {}", detail),
             StampError::Encode(detail) => write!(f, "Failed to encode image: {}", detail),
+            StampError::Resize(detail) => write!(f, "Failed to resize image: {}", detail),
+            StampError::Variants { count, max } => write!(f, "Expected 1 to {} variants, got {}", max, count),
         }
     }
 }
@@ -106,6 +114,14 @@ mod tests {
         assert_eq!(
             StampError::Encode("bad quality".into()).to_string(),
             "Failed to encode image: bad quality"
+        );
+    }
+
+    #[test]
+    fn the_variants_message_states_the_range_and_the_count() {
+        assert_eq!(
+            StampError::Variants { count: 0, max: 8 }.to_string(),
+            "Expected 1 to 8 variants, got 0"
         );
     }
 }

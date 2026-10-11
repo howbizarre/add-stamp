@@ -1,7 +1,7 @@
 [package]
 name = "image-stamper"
 # Kept in sync with package.json so a deployed .wasm can be traced to a commit.
-version = "2.1.2"
+version = "2.2.0"
 edition = "2024"
 rust-version = "1.91"
 
@@ -20,6 +20,7 @@ ab_glyph = "0.2"
 # Pure Rust EXIF parser. image::load_from_memory does not apply the Orientation tag and
 # to_rgba8 discards it, so without this a portrait photo is stamped sideways.
 kamadak-exif = "0.6"
+fast_image_resize = { version = "6.1", default-features = false, features = ["only_u8x4", "std"] }
 
 # The wasm-opt that wasm-pack 0.13 through 0.15 downloads is Binaryen 117, which validates
 # against an older default feature set than rustc 1.91 emits. Passing an explicit flag list

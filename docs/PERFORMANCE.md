@@ -97,6 +97,42 @@ If it is picked up, two things must come with it:
 The natural shape, given that every other tunable is already a `StampOptions` field, is to
 add chroma subsampling as one more field rather than hard-coding either choice.
 
+## Resizing photos for `render`
+
+Added 2026-10-11 with `render`, which encodes a frame at sizes smaller than the source: a
+960 px and a 400 px preview with the stamp, a 1920 px and a 400 px delivery copy without.
+Once the outputs are small, the encoder stops mattering and the photo resize, which used to
+not exist, becomes the cost that the stamp's cache never had to carry. That reopens the
+`fast_image_resize` question above, and the answer flips.
+
+Measured inside the wasm artifact under Node's V8, medians of 7 runs after two warm-ups, on a
+synthetic 24 MP (6000x4000) JPEG with smooth fields, hard edges and grain, on a different and
+faster machine than the tables above, so only the ratios carry over:
+
+| | `image` Lanczos3 | `fast_image_resize` Lanczos3 |
+| --- | ---: | ---: |
+| `render`: 960 and 400, stamped | 401 ms | 314 ms |
+| `render`: 1920 and 400, unstamped | 875 ms | 368 ms |
+| `render`: 960 only | 356 ms | 295 ms |
+| `stamp` at full size, for reference | about 850 ms | about 850 ms |
+
+What is left is mostly decoding. The binary grows by 61 KiB with the crate's `only_u8x4`
+feature, which compiles the one pixel type the pipeline uses.
+
+**The cheaper route that was dropped.** libvips' split was tried first: average whole
+`k` x `k` blocks of the frame, by the largest `k` that leaves Lanczos3 at least a 2x
+reduction, then let Lanczos3 finish. It is fast with `image` alone, but whenever `k` does not
+divide the frame, the last block is partial and the output drifts by up to half a pixel
+towards the far edge, and `image`'s resize cannot be given the fractional extent to correct
+it. Against a pure Lanczos3 reference that showed as PSNR swinging between 39 and 62 dB with
+the divisibility of the frame, not with the quality of the filter. `fast_image_resize` needs
+no such step and keeps the geometry exact.
+
+**The `unsafe` it brings.** This crate still has none of its own. `fast_image_resize` has its
+intrinsics, behind safe functions; it is given buffers that are already decoded, with
+dimensions this crate has checked and computed, so nothing from the file reaches it except
+pixel values.
+
 ## Decoding
 
 At 794 ms, decoding is the other 31% and there is no obvious lever. `image` already uses
@@ -104,7 +140,10 @@ At 794 ms, decoding is the other 31% and there is no obvious lever. `image` alre
 not fit a no-`unsafe` wasm crate.
 
 The one structural option is not to decode at full resolution when the output is going to be
-smaller anyway — but this tool preserves the frame size, so it does not apply.
+smaller anyway. `stamp` preserves the frame size, so it does not apply there; `render` with
+small variants is exactly that case, and a decoder that can scale while decoding (the IDCT at
+1/2, 1/4 or 1/8, as libjpeg does) would cut the largest remaining cost. `zune-jpeg` 0.5, the
+decoder `image` uses here, does not offer it.
 
 ## Reproducing this
 

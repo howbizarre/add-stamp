@@ -25,7 +25,9 @@ import type {
   InitOutput,
   SyncInitInput,
   ImageStamper as RawImageStamper,
-  StampOptions as RawStampOptions
+  Rendering as RawRendering,
+  StampOptions as RawStampOptions,
+  Variant as RawVariant
 } from '../wasm/image_stamper.js';
 import { packColor, unpackColor } from './color.js';
 
@@ -112,7 +114,29 @@ export type ImageSource = ArrayBuffer | ArrayBufferView | Blob;
 /** The synchronous subset of {@link ImageSource}: no `Blob`, which can only be read async. */
 export type ImageBytes = ArrayBuffer | ArrayBufferView;
 
-export interface StampResult {
+/** One output of {@link ImageStamper.render}. */
+export interface RenderVariant {
+  /**
+   * Longer side in pixels, after EXIF orientation. A frame already within it keeps its size,
+   * so nothing is upscaled. Leave it out, or pass 0, for the source size.
+   */
+  maxSize?: number;
+
+  /** Composite the stamp. Default `true`. A render whose variants all leave it off needs no stamp. */
+  stamp?: boolean;
+
+  /** Draw the caption, when the call has one. Default `true`. */
+  caption?: boolean;
+}
+
+/** Options for one {@link ImageStamper.render} call. */
+export interface RenderInput extends StampInput {
+  /** The outputs, one to eight, all made from a single decode of the image. */
+  variants: readonly RenderVariant[];
+}
+
+/** One encoded image. */
+export interface RenderedImage {
   /**
    * The encoded image. A fresh copy out of WebAssembly memory, so it is backed by a plain
    * `ArrayBuffer` and can go straight into `new Blob([...])`, `new File([...])` or
@@ -120,9 +144,35 @@ export interface StampResult {
    */
   bytes: Uint8Array<ArrayBuffer>;
 
+  /** Width of the encoded image in pixels. */
+  width: number;
+
+  /** Height of the encoded image in pixels. */
+  height: number;
+
   format: OutputFormat;
   mimeType: 'image/jpeg' | 'image/webp';
   extension: 'jpg' | 'webp';
+}
+
+export interface RenderResult {
+  /** Width of the source after EXIF orientation, as the viewer sees it. */
+  sourceWidth: number;
+
+  /** Height of the source after EXIF orientation, as the viewer sees it. */
+  sourceHeight: number;
+
+  /** One image per variant, in the order the variants were given. */
+  variants: RenderedImage[];
+}
+
+/** What {@link ImageStamper.stamp} returns: the image at the source size, and that size. */
+export interface StampResult extends RenderedImage {
+  /** Width of the source after EXIF orientation, which is also {@link width}. */
+  sourceWidth: number;
+
+  /** Height of the source after EXIF orientation, which is also {@link height}. */
+  sourceHeight: number;
 }
 
 /** Accepted by `createImageStamper` in both entries. */
@@ -311,7 +361,7 @@ function normalizeFormat(format: StampOptions['format']): OutputFormat {
   }
 }
 
-function describeFormat(format: OutputFormat): Pick<StampResult, 'format' | 'mimeType' | 'extension'> {
+function describeFormat(format: OutputFormat): Pick<RenderedImage, 'format' | 'mimeType' | 'extension'> {
   return format === 'webp'
     ? { format, mimeType: 'image/webp', extension: 'webp' }
     : { format, mimeType: 'image/jpeg', extension: 'jpg' };
@@ -341,6 +391,72 @@ function uint32(value: unknown, name: string): number {
   }
 
   return value;
+}
+
+/** The flags cross as `bool`, which the glue would build from any truthy value without a word. */
+function boolean(value: unknown, name: string): boolean {
+  if (typeof value !== 'boolean') {
+    throw new TypeError(`image-stamper: ${name} must be a boolean, got ${typeof value}.`);
+  }
+
+  return value;
+}
+
+/**
+ * Builds the WebAssembly handles for the variants: the crate's defaults (source size, stamped,
+ * captioned), overridden by whatever each variant sets. Frees what it built if one fails.
+ *
+ * The handles are consumed by the `render` call they are passed to, so the caller frees them
+ * only if that call is never made.
+ */
+function buildRawVariants(variants: readonly RenderVariant[]): RawVariant[] {
+  if (!Array.isArray(variants)) {
+    throw new TypeError('image-stamper: variants must be an array.');
+  }
+
+  const raws: RawVariant[] = [];
+
+  try {
+    variants.forEach((variant: unknown, index) => {
+      if (variant === null || typeof variant !== 'object') {
+        throw new TypeError(`image-stamper: variants[${index}] must be an object.`);
+      }
+
+      const v = variant as RenderVariant;
+      const raw = new wasm.Variant();
+
+      raws.push(raw);
+
+      if (v.maxSize != null) raw.max_size = uint32(v.maxSize, `variants[${index}].maxSize`);
+      if (v.stamp != null) raw.stamp = boolean(v.stamp, `variants[${index}].stamp`);
+      if (v.caption != null) raw.caption = boolean(v.caption, `variants[${index}].caption`);
+    });
+  } catch (error) {
+    raws.forEach((raw) => raw.free());
+
+    throw error;
+  }
+
+  return raws;
+}
+
+/** Copies every image out of a rendering, which the caller still frees. */
+function readRendering(rendering: RawRendering, format: OutputFormat): RenderResult {
+  const described = describeFormat(format);
+  const variants: RenderedImage[] = [];
+
+  for (let index = 0; index < rendering.count; index++) {
+    variants.push({
+      // Defined for every index below `count`. The glue copies the bytes out of WebAssembly
+      // memory with `.slice()`, which is what makes the narrower buffer type true.
+      bytes: rendering.takeBytes(index) as Uint8Array<ArrayBuffer>,
+      width: rendering.width(index)!,
+      height: rendering.height(index)!,
+      ...described
+    });
+  }
+
+  return { sourceWidth: rendering.sourceWidth, sourceHeight: rendering.sourceHeight, variants };
 }
 
 /**
@@ -516,9 +632,42 @@ export class ImageStamper {
 
   /** {@link stamp} for bytes already in hand. */
   stampSync(image: ImageBytes, options: StampInput = {}): StampResult {
+    // A render of one variant at the source size, stamped and captioned, is what the crate's
+    // applyStamp is; going through it here also reports the size.
+    const { sourceWidth, sourceHeight, variants } = this.renderSync(image, { ...options, variants: [{}] });
+
+    return { ...variants[0]!, sourceWidth, sourceHeight };
+  }
+
+  /**
+   * Decodes the image once and encodes one image per variant: each resized to its own
+   * `maxSize`, with or without the stamp and the caption. The usual case is a gallery: a
+   * stamped preview, a stamped thumbnail without the caption, and later the delivered photos
+   * without either.
+   *
+   * The stamp and the caption are laid out on each output at its final size, so a thumbnail
+   * gets a crisp stamp rather than a full-size one shrunk to a smudge; `stampPadding` and
+   * the caption size are measured against that output. Every other option applies to all
+   * variants.
+   *
+   * Rejects like {@link stamp}, and also when there are no variants or more than eight, or
+   * when a variant asks for the stamp and none has been set. A variant without the stamp
+   * needs none.
+   */
+  async render(image: ImageSource, options: RenderInput): Promise<RenderResult> {
+    return this.renderSync(await toBytes(image), options);
+  }
+
+  /** {@link render} for bytes already in hand. */
+  renderSync(image: ImageBytes, options: RenderInput): RenderResult {
     const handle = this.#handle;
     const bytes = toBytesSync(image);
-    const { caption = '', ...rest } = options;
+
+    if (options === null || typeof options !== 'object') {
+      throw new TypeError('image-stamper: render needs options with variants.');
+    }
+
+    const { caption = '', variants, ...rest } = options;
 
     if (typeof caption !== 'string') {
       throw new TypeError(`image-stamper: caption must be a string, got ${typeof caption}.`);
@@ -528,11 +677,13 @@ export class ImageStamper {
     const raw = buildRawOptions(rest);
 
     try {
-      // The glue returns `.slice()` of a view into WebAssembly memory: a copy over a plain
-      // ArrayBuffer, which is what makes the narrower type below true.
-      const out = handle.applyStamp(bytes, caption, raw) as Uint8Array<ArrayBuffer>;
+      const rendering = handle.render(bytes, caption, raw, buildRawVariants(variants));
 
-      return { bytes: out, ...describeFormat(format) };
+      try {
+        return readRendering(rendering, format);
+      } finally {
+        rendering.free();
+      }
     } finally {
       raw.free();
     }

@@ -391,6 +391,173 @@ describe('stamp', () => {
 
     stamper.free();
   });
+
+  it('reports the size of the output and of the upright source', async () => {
+    const stamper = await ready();
+
+    const landscape = await stamper.stamp(photo);
+    const upright = await stamper.stamp(portrait);
+
+    assert.deepEqual(
+      [landscape.width, landscape.height, landscape.sourceWidth, landscape.sourceHeight],
+      [400, 300, 400, 300]
+    );
+    assert.deepEqual([upright.width, upright.height, upright.sourceWidth, upright.sourceHeight], [300, 400, 300, 400]);
+
+    stamper.free();
+  });
+});
+
+describe('render', () => {
+  const sizeOf = (image) => [image.width, image.height];
+
+  it('makes every variant at its size from one call, in the order asked', async () => {
+    const stamper = await ready();
+
+    const result = await stamper.render(photo, {
+      caption: 'IMG_0001',
+      variants: [{ maxSize: 100 }, {}, { maxSize: 240, caption: false }]
+    });
+
+    assert.deepEqual([result.sourceWidth, result.sourceHeight], [400, 300]);
+    assert.deepEqual(result.variants.map(sizeOf), [
+      [100, 75],
+      [400, 300],
+      [240, 180]
+    ]);
+
+    for (const image of result.variants) {
+      assert.deepEqual(jpegDimensions(image.bytes), { width: image.width, height: image.height });
+      assert.ok(image.bytes.buffer instanceof ArrayBuffer);
+      assert.equal(image.bytes.byteLength, image.bytes.buffer.byteLength, 'not a window onto wasm memory');
+      assert.equal(image.mimeType, 'image/jpeg');
+      assert.equal(image.extension, 'jpg');
+    }
+
+    stamper.free();
+  });
+
+  it('never upscales', async () => {
+    const stamper = await ready();
+
+    const result = await stamper.render(photo, { variants: [{ maxSize: 960 }] });
+
+    assert.deepEqual(result.variants.map(sizeOf), [[400, 300]]);
+
+    stamper.free();
+  });
+
+  it('measures maxSize on the upright frame', async () => {
+    const stamper = await ready();
+
+    const result = await stamper.render(portrait, { variants: [{ maxSize: 120 }] });
+
+    assert.deepEqual([result.sourceWidth, result.sourceHeight], [300, 400]);
+    assert.deepEqual(result.variants.map(sizeOf), [[90, 120]]);
+    assert.deepEqual(jpegDimensions(result.variants[0].bytes), { width: 90, height: 120 });
+
+    stamper.free();
+  });
+
+  it('makes unstamped variants without a stamp loaded', async () => {
+    const stamper = await createImageStamper();
+
+    const result = await stamper.render(photo, {
+      caption: 'IMG_0001',
+      variants: [
+        { maxSize: 192, stamp: false, caption: false },
+        { maxSize: 40, stamp: false }
+      ]
+    });
+
+    assert.deepEqual(result.variants.map(sizeOf), [
+      [192, 144],
+      [40, 30]
+    ]);
+
+    stamper.free();
+  });
+
+  it('refuses a stamped variant without a stamp, and the stamper carries on', async () => {
+    const stamper = await createImageStamper();
+
+    await assert.rejects(stamper.render(photo, { variants: [{ maxSize: 40 }] }), /Stamp not set/);
+    assert.equal((await stamper.render(photo, { variants: [{ maxSize: 40, stamp: false }] })).variants.length, 1);
+
+    stamper.free();
+  });
+
+  it('applies the stamp and the caption only where asked', async () => {
+    const stamper = await ready();
+    const options = { caption: 'IMG_0001', format: 'webp' };
+
+    const [stamped, bare, captioned] = (
+      await stamper.render(photo, {
+        ...options,
+        variants: [
+          { maxSize: 200, caption: false },
+          { maxSize: 200, stamp: false, caption: false },
+          { maxSize: 200, stamp: false }
+        ]
+      })
+    ).variants;
+    const [alone] = (await stamper.render(photo, { variants: [{ maxSize: 200, stamp: false }], format: 'webp' })).variants;
+
+    assert.notDeepEqual(stamped.bytes, bare.bytes, 'the stamp is composited');
+    assert.notDeepEqual(captioned.bytes, bare.bytes, 'the caption is drawn');
+    assert.deepEqual(alone.bytes, bare.bytes, 'without a caption, a captioned variant is a bare one');
+    assert.equal(stamped.format, 'webp');
+
+    stamper.free();
+  });
+
+  it('gives the source-size variant exactly what stamp makes', async () => {
+    const stamper = await ready();
+
+    const stamped = await stamper.stamp(photo, { caption: 'IMG_0001' });
+    const { variants } = await stamper.render(photo, { caption: 'IMG_0001', variants: [{ maxSize: 100 }, {}] });
+
+    assert.deepEqual(variants[1].bytes, stamped.bytes);
+
+    stamper.free();
+  });
+
+  it('renderSync works on bytes and refuses a Blob', async () => {
+    const stamper = await ready();
+
+    assert.equal(stamper.renderSync(photo, { variants: [{ maxSize: 50 }] }).variants[0].width, 50);
+    assert.throws(() => stamper.renderSync(new Blob([photo]), { variants: [{}] }), /Blob needs the async method/);
+
+    stamper.free();
+  });
+
+  it('validates the variants', async () => {
+    const stamper = await ready();
+
+    assert.throws(() => stamper.renderSync(photo), /render needs options with variants/);
+    assert.throws(() => stamper.renderSync(photo, {}), /variants must be an array/);
+    assert.throws(() => stamper.renderSync(photo, { variants: [null] }), /variants\[0\] must be an object/);
+    assert.throws(() => stamper.renderSync(photo, { variants: [{}, { maxSize: -1 }] }), RangeError);
+    assert.throws(() => stamper.renderSync(photo, { variants: [{ maxSize: 1.5 }] }), /variants\[0\]\.maxSize/);
+    assert.throws(() => stamper.renderSync(photo, { variants: [{ stamp: 'yes' }] }), /variants\[0\]\.stamp must be a boolean/);
+    assert.throws(() => stamper.renderSync(photo, { variants: [{ caption: 1 }] }), /variants\[0\]\.caption must be a boolean/);
+    assert.throws(() => stamper.renderSync(photo, { variants: [] }), /Expected 1 to 8 variants, got 0/);
+    assert.throws(() => stamper.renderSync(photo, { variants: Array(9).fill({}) }), /Expected 1 to 8 variants, got 9/);
+
+    // A refused call leaves nothing behind that breaks the next one.
+    assert.equal(stamper.renderSync(photo, { variants: Array(8).fill({ maxSize: 20 }) }).variants.length, 8);
+
+    stamper.free();
+  });
+
+  it('throws after free()', async () => {
+    const stamper = await ready();
+
+    stamper.free();
+
+    assert.throws(() => stamper.renderSync(photo, { variants: [{}] }), /has been freed/);
+    await assert.rejects(stamper.render(photo, { variants: [{}] }), /has been freed/);
+  });
 });
 
 describe('option validation', () => {

@@ -1,0 +1,95 @@
+# The engine: the Rust crate in wasm/ and the npm package built from it in
+# packages/image-stamper. Checks every push to master and every pull request that touches
+# either; a tag image-stamper-v<version> also publishes the package to npm.
+#
+# The app has no workflow here: Cloudflare builds and deploys it, and it takes the engine from
+# npm like any other consumer.
+
+name: image-stamper
+
+on:
+  push:
+    branches: [master]
+    tags: ['image-stamper-v*']
+    paths: ['wasm/**', 'packages/image-stamper/**', '.github/workflows/image-stamper.yml']
+  pull_request:
+    paths: ['wasm/**', 'packages/image-stamper/**', '.github/workflows/image-stamper.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # The release whose bindgen pairs with the wasm-bindgen in wasm/Cargo.lock; wasm-pack fetches
+  # the matching wasm-bindgen-cli itself. The prebuilt binary, because `cargo install` would
+  # compile it on every run.
+  WASM_PACK_VERSION: v0.15.0
+
+jobs:
+  crate:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: wasm
+    steps:
+      - uses: actions/checkout@v7
+
+      # Installs the toolchain, target and components pinned in wasm/rust-toolchain.toml.
+      - run: rustup toolchain install
+
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo clippy --target wasm32-unknown-unknown -- -D warnings
+      - run: cargo test
+
+  package:
+    runs-on: ubuntu-24.04
+    needs: crate
+    permissions:
+      contents: read
+      # npm provenance, and trusted publishing when it is set up on npmjs.com.
+      id-token: write
+    defaults:
+      run:
+        working-directory: packages/image-stamper
+    steps:
+      - uses: actions/checkout@v7
+
+      - run: rustup toolchain install
+        working-directory: wasm
+
+      - name: Install wasm-pack
+        working-directory: .
+        run: |
+          name="wasm-pack-${WASM_PACK_VERSION}-x86_64-unknown-linux-musl"
+          curl --proto '=https' --tlsv1.2 -sSfL \
+            "https://github.com/wasm-bindgen/wasm-pack/releases/download/${WASM_PACK_VERSION}/${name}.tar.gz" \
+            | tar xz -C "$RUNNER_TEMP"
+          install -m 755 "$RUNNER_TEMP/${name}/wasm-pack" "$HOME/.cargo/bin/wasm-pack"
+          wasm-pack --version
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: packages/image-stamper/package-lock.json
+          registry-url: https://registry.npmjs.org
+
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - run: npm pack --dry-run
+
+      - name: Publish
+        if: startsWith(github.ref, 'refs/tags/image-stamper-v')
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "${GITHUB_REF_NAME}" != "image-stamper-v${version}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match package.json version ${version}"
+            exit 1
+          fi
+          npm publish --provenance --access public
+        env:
+          # Unused once trusted publishing is configured for this repository on npmjs.com;
+          # until then, an automation token in the repository secrets.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

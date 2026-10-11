@@ -6,7 +6,7 @@
 
 use image::{DynamicImage, ImageFormat, Rgba, RgbaImage};
 use image_stamper::error::StampError;
-use image_stamper::{ImageStamper, OutputFormat, StampOptions, defaults};
+use image_stamper::{ImageStamper, MAX_VARIANTS, OutputFormat, Rendering, StampOptions, Variant, defaults};
 use std::io::Cursor;
 
 /// Full opacity, so the stamp is unmistakable in the output; everything else default.
@@ -478,6 +478,280 @@ fn a_fresh_stamper_reports_no_stamp() {
     assert_eq!(stamper.stamp_height(), 0);
 }
 
+// ---------------------------------------------------------------------------------------
+// render: one decode, several outputs
+// ---------------------------------------------------------------------------------------
+
+fn sized(max_size: u32) -> Variant {
+    Variant {
+        max_size,
+        ..Default::default()
+    }
+}
+
+fn plain(max_size: u32) -> Variant {
+    Variant {
+        max_size,
+        stamp: false,
+        caption: false,
+    }
+}
+
+fn sizes(rendering: &Rendering) -> Vec<(u32, u32)> {
+    rendering
+        .images()
+        .iter()
+        .map(|image| {
+            assert_eq!(
+                dimensions_of(&image.bytes),
+                (image.width, image.height),
+                "the reported size must be the encoded one"
+            );
+
+            (image.width, image.height)
+        })
+        .collect()
+}
+
+#[test]
+fn render_makes_every_variant_at_its_size() {
+    let mut stamper = ready_stamper();
+
+    let rendering = stamper
+        .render_image(
+            &photo_png(600, 400),
+            "IMG_1234",
+            jpeg_options(),
+            &[sized(0), sized(240), sized(100)],
+        )
+        .expect("rendering must succeed");
+
+    assert_eq!((rendering.source_width(), rendering.source_height()), (600, 400));
+    assert_eq!(sizes(&rendering), vec![(600, 400), (240, 160), (100, 67)]);
+}
+
+/// The variants are worked through largest first, but the images must come back in the order
+/// the caller asked for them.
+#[test]
+fn render_returns_the_images_in_the_order_asked() {
+    let mut stamper = ready_stamper();
+
+    let rendering = stamper
+        .render_image(
+            &photo_png(600, 400),
+            "",
+            jpeg_options(),
+            &[sized(100), sized(0), sized(240)],
+        )
+        .unwrap();
+
+    assert_eq!(sizes(&rendering), vec![(100, 67), (600, 400), (240, 160)]);
+}
+
+#[test]
+fn render_never_upscales() {
+    let mut stamper = ready_stamper();
+
+    let rendering = stamper
+        .render_image(&photo_png(300, 200), "", jpeg_options(), &[sized(960)])
+        .unwrap();
+
+    assert_eq!(sizes(&rendering), vec![(300, 200)]);
+}
+
+/// The finals of a gallery are resized without a stamp; that must not require one.
+#[test]
+fn variants_without_the_stamp_need_no_stamp_loaded() {
+    let mut stamper = ImageStamper::new();
+
+    let rendering = stamper
+        .render_image(
+            &photo_png(600, 400),
+            "IMG_1234",
+            jpeg_options(),
+            &[plain(192), plain(40)],
+        )
+        .expect("an unstamped render needs no stamp");
+
+    assert_eq!(sizes(&rendering), vec![(192, 128), (40, 27)]);
+}
+
+#[test]
+fn a_stamped_variant_without_a_stamp_is_refused() {
+    let mut stamper = ImageStamper::new();
+
+    let result = stamper.render_image(&photo_png(600, 400), "", jpeg_options(), &[plain(192), sized(40)]);
+
+    assert_eq!(result.unwrap_err(), StampError::StampNotSet);
+}
+
+#[test]
+fn no_variants_and_too_many_are_refused() {
+    let mut stamper = ready_stamper();
+    let photo = photo_png(60, 40);
+
+    assert_eq!(
+        stamper.render_image(&photo, "", jpeg_options(), &[]).unwrap_err(),
+        StampError::Variants {
+            count: 0,
+            max: MAX_VARIANTS
+        }
+    );
+    assert_eq!(
+        stamper
+            .render_image(&photo, "", jpeg_options(), &[sized(10); MAX_VARIANTS + 1])
+            .unwrap_err(),
+        StampError::Variants {
+            count: MAX_VARIANTS + 1,
+            max: MAX_VARIANTS
+        }
+    );
+    assert!(
+        stamper
+            .render_image(&photo, "", jpeg_options(), &[sized(10); MAX_VARIANTS])
+            .is_ok()
+    );
+}
+
+#[test]
+fn a_bad_file_fails_the_render_and_the_stamper_carries_on() {
+    let mut stamper = ready_stamper();
+
+    let result = stamper.render_image(b"not an image", "", jpeg_options(), &[sized(100)]);
+
+    assert!(matches!(result, Err(StampError::Decode(_))));
+    assert!(
+        stamper
+            .render_image(&photo_png(60, 40), "", jpeg_options(), &[sized(30)])
+            .is_ok()
+    );
+}
+
+/// `max_size` is the longer side as the viewer sees the photo, and the reported source size
+/// is upright too.
+#[test]
+fn an_exif_rotated_photo_renders_upright() {
+    let mut stamper = ready_stamper();
+
+    let rendering = stamper
+        .render_image(
+            &jpeg_with_orientation(400, 300, 6),
+            "",
+            jpeg_options(),
+            &[sized(0), sized(120)],
+        )
+        .unwrap();
+
+    assert_eq!((rendering.source_width(), rendering.source_height()), (300, 400));
+    assert_eq!(sizes(&rendering), vec![(300, 400), (90, 120)]);
+}
+
+/// Frames are resized before they are turned upright, so the content has to come out turned
+/// the same way as at the full size, not only the dimensions.
+#[test]
+fn a_resized_rotated_frame_is_turned_like_the_full_one() {
+    // Top half black, bottom half white. A 90-degree clockwise turn puts the black on the right.
+    let sensor = RgbaImage::from_fn(400, 300, |_, y| {
+        if y < 150 {
+            Rgba([0, 0, 0, 255])
+        } else {
+            Rgba([255, 255, 255, 255])
+        }
+    });
+    let mut stamper = ImageStamper::new();
+
+    let rendering = stamper
+        .render_image(&jpeg_of_with_orientation(sensor, 6), "", jpeg_options(), &[plain(120)])
+        .unwrap();
+    let small = decode(&rendering.images()[0].bytes);
+
+    assert_eq!(small.dimensions(), (90, 120));
+    assert!(small.get_pixel(10, 60)[0] > 200, "the left side must be white");
+    assert!(small.get_pixel(80, 60)[0] < 50, "the right side must be black");
+}
+
+/// The stamp is composited per output, so it shows on a stamped variant and not on a plain
+/// one of the same size.
+#[test]
+fn the_stamp_lands_only_where_asked() {
+    let mut stamper = ready_stamper();
+
+    let rendering = stamper
+        .render_image(&photo_png(400, 300), "", lossless_options(), &[sized(200), plain(200)])
+        .unwrap();
+    let stamped = decode(&rendering.images()[0].bytes);
+    let bare = decode(&rendering.images()[1].bytes);
+
+    assert_eq!(
+        *stamped.get_pixel(100, 75),
+        Rgba([255, 0, 0, 255]),
+        "the stamp's centre is red"
+    );
+    assert_eq!(
+        *bare.get_pixel(100, 75),
+        Rgba([120, 120, 120, 255]),
+        "the photo shows through"
+    );
+}
+
+#[test]
+fn the_caption_is_drawn_only_where_asked() {
+    let mut stamper = ImageStamper::new();
+    let captioned = Variant {
+        caption: true,
+        ..plain(200)
+    };
+
+    let rendering = stamper
+        .render_image(
+            &photo_png(400, 300),
+            "IMG_1234",
+            lossless_options(),
+            &[captioned, plain(200)],
+        )
+        .unwrap();
+    let without = stamper
+        .render_image(&photo_png(400, 300), "", lossless_options(), &[captioned])
+        .unwrap();
+
+    assert_ne!(rendering.images()[0].bytes, rendering.images()[1].bytes);
+    assert_eq!(rendering.images()[1].bytes, without.images()[0].bytes);
+}
+
+/// The source-size output of a multi-variant render must be exactly what `applyStamp` makes,
+/// whether it is the one that takes the source or a copy of it.
+#[test]
+fn the_source_size_variant_is_what_apply_stamp_makes() {
+    let photo = photo_png(400, 300);
+    let mut stamper = ready_stamper();
+
+    let expected = stamper.stamp_image(&photo, "IMG_1234", jpeg_options()).unwrap();
+    let rendering = stamper
+        .render_image(&photo, "IMG_1234", jpeg_options(), &[sized(0), sized(100), sized(0)])
+        .unwrap();
+
+    assert_eq!(rendering.images()[0].bytes, expected);
+    assert_eq!(rendering.images()[2].bytes, expected);
+}
+
+/// Each output size gets its own scaled stamp from the cache, never one sized for another.
+#[test]
+fn the_cache_serves_every_size_its_own_stamp() {
+    let photo = photo_png(600, 400);
+    let mut warm = ready_stamper();
+
+    warm.render_image(&photo, "", lossless_options(), &[sized(240), sized(100)])
+        .unwrap();
+    let again = warm
+        .render_image(&photo, "", lossless_options(), &[sized(240), sized(100)])
+        .unwrap();
+    let fresh = ready_stamper()
+        .render_image(&photo, "", lossless_options(), &[sized(100)])
+        .unwrap();
+
+    assert_eq!(again.images()[1].bytes, fresh.images()[0].bytes);
+}
+
 /// Builds a structurally valid PNG whose IHDR declares `width` x `height` but whose pixel
 /// data is a few bytes long.
 ///
@@ -515,10 +789,15 @@ fn png_header_declaring(width: u32, height: u32) -> Vec<u8> {
 
 /// Builds a real JPEG carrying an Orientation tag, so the parser sees a genuine container.
 fn jpeg_with_orientation(width: u32, height: u32, orientation: u16) -> Vec<u8> {
-    let baseline = encode(
-        DynamicImage::ImageRgba8(RgbaImage::from_pixel(width, height, Rgba([120, 120, 120, 255]))),
-        ImageFormat::Jpeg,
-    );
+    jpeg_of_with_orientation(
+        RgbaImage::from_pixel(width, height, Rgba([120, 120, 120, 255])),
+        orientation,
+    )
+}
+
+/// [`jpeg_with_orientation`] with the pixels given.
+fn jpeg_of_with_orientation(pixels: RgbaImage, orientation: u16) -> Vec<u8> {
+    let baseline = encode(DynamicImage::ImageRgba8(pixels), ImageFormat::Jpeg);
 
     let mut tiff = Vec::new();
 

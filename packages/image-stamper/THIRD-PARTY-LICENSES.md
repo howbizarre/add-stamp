@@ -1,7 +1,7 @@
 # Third-party licences
 
-`image_stamper_bg.wasm` is compiled from the `image-stamper` crate, version 2.1.2, together
-with the 32 Rust crates below. Each is used under the licence named in the fourth column,
+`image_stamper_bg.wasm` is compiled from the `image-stamper` crate, version 2.2.0, together
+with the 34 Rust crates below. Each is used under the licence named in the fourth column,
 chosen from what the crate offers; the full text of that licence, as the crate ships it, follows in
 the notices section.
 
@@ -21,6 +21,7 @@ by hand. The embedded Ubuntu font is covered separately in [FONT-LICENSE.md](./F
 | cfg-if | 1.0.5 | MIT OR Apache-2.0 | MIT | <https://github.com/rust-lang/cfg-if> |
 | console_error_panic_hook | 0.1.7 | Apache-2.0/MIT | MIT | <https://github.com/rustwasm/console_error_panic_hook> |
 | crc32fast | 1.5.2 | MIT OR Apache-2.0 | MIT | <https://github.com/srijs/rust-crc32fast> |
+| fast_image_resize | 6.1.0 | MIT OR Apache-2.0 | MIT | <https://github.com/cykooz/fast_image_resize> |
 | fdeflate | 0.3.7 | MIT OR Apache-2.0 | MIT | <https://github.com/image-rs/fdeflate> |
 | flate2 | 1.1.10 | MIT OR Apache-2.0 | MIT | <https://github.com/rust-lang/flate2-rs> |
 | image | 0.25.10 | MIT OR Apache-2.0 | MIT | <https://github.com/image-rs/image> |
@@ -37,6 +38,7 @@ by hand. The embedded Ubuntu font is covered separately in [FONT-LICENSE.md](./F
 | pxfm | 0.1.30 | BSD-3-Clause OR Apache-2.0 | Apache-2.0 | <https://github.com/awxkee/pxfm> |
 | quick-error | 2.0.1 | MIT/Apache-2.0 | MIT | <http://github.com/tailhook/quick-error> |
 | simd-adler32 | 0.3.10 | MIT | MIT | <https://github.com/mcountryman/simd-adler32> |
+| thiserror | 2.0.21 | MIT OR Apache-2.0 | MIT | <https://github.com/dtolnay/thiserror> |
 | ttf-parser | 0.25.1 | MIT OR Apache-2.0 | MIT | <https://github.com/harfbuzz/ttf-parser> |
 | unicode-ident | 1.0.26 | (MIT OR Apache-2.0) AND Unicode-3.0 | MIT AND Unicode-3.0 | <https://github.com/dtolnay/unicode-ident> |
 | wasm-bindgen | 0.2.129 | MIT OR Apache-2.0 | MIT | <https://github.com/wasm-bindgen/wasm-bindgen> |
@@ -609,6 +611,36 @@ Used under MIT (offered as `MIT OR Apache-2.0`). <https://github.com/srijs/rust-
 MIT License
 
 Copyright (c) 2018 Sam Rijs, Alex Crichton and contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+### fast_image_resize 6.1.0
+
+Used under MIT (offered as `MIT OR Apache-2.0`). <https://github.com/cykooz/fast_image_resize>
+
+`LICENSE-MIT`:
+
+```text
+MIT License
+
+Copyright (c) 2021 Kirill Kuzminykh
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -1656,6 +1688,38 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+```
+
+### thiserror 2.0.21
+
+Used under MIT (offered as `MIT OR Apache-2.0`). <https://github.com/dtolnay/thiserror>
+
+`LICENSE-MIT`:
+
+```text
+Permission is hereby granted, free of charge, to any
+person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the
+Software without restriction, including without
+limitation the rights to use, copy, modify, merge,
+publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software
+is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice
+shall be included in all copies or substantial portions
+of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
+ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
+SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
 ```
 
 ### ttf-parser 0.25.1
